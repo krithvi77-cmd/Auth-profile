@@ -1,0 +1,85 @@
+.auth-profile{
+    display: grid;
+    grid-template-rows: 0.5fr 5fr;
+    width: 100%;
+    height: 100%;
+    padding: 10px 40px 20px 40px;
+    box-sizing: border-box;
+    flex-direction: column;
+    
+}
+
+.auth-profile-header{
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    width: 100%;
+    font-size: 14px;
+    color: #606060;
+    justify-content: end;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.auth-profile-header h2{
+    font-size: 18px;
+    font-weight: 500;
+    color: #CECECE;
+    margin-bottom: 10px;
+
+}
+.auth-profile-search{
+    display: grid;
+    grid-template-columns: 0.3fr 0.12fr;
+    width: 95%;
+    align-items: center;
+    border: 1px solid #333;
+    border-radius: 5px;
+}
+
+.auth-profile-search:focus{
+    border: 1px solid #338BFF;
+}
+
+.auth-profile-search i{
+    color: #777777;
+    font-size: 18px;
+    padding: 10px;
+}
+
+.auth-profile-header-left{
+    display: grid;
+}
+
+.auth-profile-header-right{
+    display: grid;
+    justify-content: flex-end;
+    gap: 10px;
+    grid-template-columns: 0.4fr 0.5fr;
+
+}
+
+span[contenteditable] {
+  display: inline-block;
+  min-width: 250px;
+  padding: 10px;
+  color: rgb(145, 145, 145);
+  font-size: 14px;
+  outline: none;
+}
+
+
+span[contenteditable]:empty::before {
+  content: attr(placeholder);
+  color: #888;
+  pointer-events: none;
+}
+
+
+span[contenteditable]:focus {
+  border-color: #338BFF;
+}
+
+
+span[contenteditable]:focus:empty::before {
+  content: "";
+}

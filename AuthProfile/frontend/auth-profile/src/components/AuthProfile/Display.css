@@ -1,0 +1,15 @@
+.display{
+    background-color: #212121;
+    border-radius: 10px;
+}
+
+.display-header{
+    display: grid;
+    grid-template-columns: 1.8fr 1fr 1fr 1.5fr 1fr;
+    font-size: 15px;;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #333333;
+    padding: 15px 30px;
+    color:#CECECE;
+}

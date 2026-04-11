@@ -1,0 +1,10 @@
+.main{
+    height : 95vh;
+    width: 100vw;
+    max-width: 100vw;
+    display: grid;
+    grid-template-columns: 0.15fr 3fr;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}

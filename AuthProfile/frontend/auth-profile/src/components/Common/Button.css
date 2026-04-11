@@ -1,0 +1,29 @@
+.custom-button{
+  color: rgb(250, 250, 250);
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.blue{
+    background-color: #338BFF;
+}
+
+.grey{
+    background-color: #212121;
+}
+
+.black{
+    background-color: #171717;
+    color: #338BFF;
+    border: #338BFF 1px solid;
+}
+
+.black-light{
+    background-color: #212121;
+    color: #338BFF;
+    padding: 7px 10px;
+    border:  1px solid #333333;
+}
