@@ -1,0 +1,79 @@
+[{ 
+	"name": "Basic_auth",
+	"fields" : [
+		{
+		   "name" : "authProfileName",
+		   "label": "Auth Profile name",
+		   "type" : "String",
+		   "options": null,
+		   "required": true
+		}
+		
+	]
+},
+  {
+    "name": "OAuth_v2",
+    "fields": [
+      {
+        "name": "authProfileName",
+        "label": "Auth Profile name",
+        "type": "String",
+        "options": [],
+        "required": false
+      },
+      {
+        "name": "ClientID",
+        "label": "Client ID",
+        "type": "String",
+        "options": [],
+        "required": false
+      },
+      {
+        "name": "ClientSecret",
+        "label": "Client Secret",
+        "type": "String",
+        "options": [],
+        "required": false
+      },
+      {
+        "name": "AuthorizationURL",
+        "label": "Authorization URL",
+        "type": "String",
+        "options": [],
+        "required": true
+      },
+      {
+        "name": "AccessTokenURL",
+        "label": "Access Token URL",
+        "type": "String",
+        "options": [],
+        "required": false
+      },
+      {
+        "name": "RefreshTokenURL",
+        "label": "Refresh Token URL",
+        "type": "String",
+        "options": [],
+        "required": false
+      },
+      {
+        "name": "Scopes",
+        "label": "Scopes",
+        "type": "String",
+        "options": [],
+        "required": false
+      },
+      {
+        "name": "AccessTokenPlacement",
+        "label": "Access Token Placement",
+        "type": "select",
+        "options": [
+          { "label": "Token in Header", "value": "header" },
+          { "label": "Token in Query String", "value": "query" },
+          { "label": "Both", "value": "both" }
+        ],
+        "required": true
+      }
+    ]
+  }
+]
