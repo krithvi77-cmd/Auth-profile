@@ -1,47 +1,41 @@
 package model;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class AuthType {
 
-	private static int count = 0;
-
 	private int id;
 	private String name;
-	private ArrayList<Field> fields;
+	private List<Field> fields;
 
 	public AuthType() {
-		this.id = ++count;
+		this.fields = new ArrayList<>();
 	}
 
-	public AuthType(String name, ArrayList<Field> fields) {
+	public AuthType(String name, List<Field> fields) {
 		this.name = name;
-		this.fields = fields;
-		this.id = ++count;
+		this.fields = fields != null ? fields : new ArrayList<>();
 	}
 
-	public int getId() {
+	public int getId() { 
 		return id;
 	}
-
-	public void setId(int id) {
+	public void setId(int id) { 
 		this.id = id;
 	}
 
-	public String getName() {
-		return name;
+	public String getName() { 
+		return name; 
 	}
-
 	public void setName(String name) {
-		this.name = name;
+		this.name = name; 
 	}
 
-	public ArrayList<Field> getFields() {
+	public List<Field> getFields() { 
 		return fields;
 	}
-
-	public void setFields(ArrayList<Field> fields) {
+	public void setFields(List<Field> fields) { 
 		this.fields = fields;
 	}
-
 }

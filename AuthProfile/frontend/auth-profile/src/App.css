@@ -10,3 +10,19 @@
     justify-content: center;
     height: 95vh;
 }
+
+.base_layer{
+    z-index: 0;
+    
+    width: 100vw;
+    height: 100vh;
+}
+
+.first_layer{
+    z-index:1;
+    position: absolute;
+    top: 0px;
+    width: 100vw;
+    height: 100vh;
+    /* display: none; */
+}

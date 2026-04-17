@@ -1,0 +1,102 @@
+.panel{
+    z-index: 5;
+    background-color: #1E1D1D;
+    height: 100vh;
+    width: 77vw;
+    position: absolute;
+    color: #CECECE;
+    left: 23vw;
+}
+
+.panel_logo{
+    background-image: url('src/assets/authpr_logo.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    padding: 20px;
+}
+
+.panel_header{
+    display: grid;
+    height: 6vh;
+    color: #CECECE;
+    grid-template-columns: 1.5fr 20fr 1fr;
+    border-bottom: 1px solid #2E2E2E;
+    box-sizing: content-box ;
+    
+}
+
+.panel_header i{
+    font-size: 24px;
+    font-weight: 900;
+    border-left: 1px solid #2E2E2E;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #1E1D1D;
+}
+
+.panel_header_content{
+   padding: 10px 10px 10px 10px;;
+   box-sizing: content-box;
+   border-left: 1px solid #2E2E2E;
+}
+
+.panel_header_content h3{
+    font-weight: 700;
+    font-size: 17px;
+}
+.panel_header_content p{
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+
+.panel_container{
+    display: flex;
+    height: 94vh;
+    width: 77vw;
+}
+
+.panel_description{
+   background-color: #171717;
+   height: 100%;
+   width: 30%;
+}
+
+.panel_configurable{
+    padding: 30px;
+}
+
+
+
+input[type="radio"] {
+  appearance: none;
+  width: 1.25em;
+  height: 1.25em;
+  border:0.15px solid #3a3a3a;
+  border-radius: 50%;
+  margin-right: 0.5em;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+
+input[type="radio"]:checked {
+  border-color: #5694c1;
+  background-color: #3a80dd;
+  box-shadow: inset 0 0 0 0.25em rgb(37, 37, 37);
+}
+
+.panel_configurable label{
+    margin-right: 20px;
+    font-size: 15px;;
+}
+.panel_configurable p{
+    margin-top: 20px;
+    margin-bottom: 15px;
+}
+
+.panel_configurable div{
+     margin-top: 10px;
+     margin-bottom: 10px;
+}

@@ -20,7 +20,7 @@ public class ConsoleView {
 	public int listAuthProfile(List<AuthType> authTypes) {
 		int count = 1;
 		for (AuthType auth : authTypes) {
-			System.out.println(" AuthType: " + count + auth.getName());
+			System.out.println(count++ +" AuthType: " + auth.getName());
 		}
 		System.out.println("Please select the type");
 		int a = user.nextInt();

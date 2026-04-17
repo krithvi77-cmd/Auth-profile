@@ -14,19 +14,25 @@ import view.ConsoleView;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class Action {
+import dao.AuthProfileDAO;
 
+public class Action {
+	
+	AuthProfileDAO profileData = new AuthProfileDAO();
+	static int fieldCount = 0;
+    static HashMap<Integer,String> fields = new HashMap<Integer,String>();
 	ArrayList<AuthProfile> authProfiles = new ArrayList<AuthProfile>();
 	ConsoleView cslView = new ConsoleView();
 	List<AuthType> authTypes = null;
 
-	public void startApplication() {
+	public void startApplication() throws Exception {
 		initialize();
 		if (cslView.dashBoard() == 1) {
 			AuthProfile authpr = createAuthProfile();
 			if (authpr == null) {
 				return;
 			}
+			profileData.save(authpr);
 			authProfiles.add(authpr);
 			System.out.println(authpr.getName());
 		}
@@ -54,21 +60,22 @@ public class Action {
 		}
 		int ntype = cslView.listAuthProfile(authTypes);
 		AuthType authType = authTypes.get(ntype - 1);
+		authType.setId(ntype);
 		String createdBy = "krithvi";
 		Date updatedOn = new Date();
 		updatedOn.getTime();
-		Map<Integer, String> authPrValue = setFieldValue(authType);
+		Map<String, String> authPrValue = setFieldValue(authType);
 		if (authType != null && createdBy != null && updatedOn != null && authPrValue != null) {
 			return new AuthProfile(authPrValue.get(Integer.valueOf(1)), authType, createdBy, updatedOn, authPrValue);
 		}
 		return null;
 	}
 
-	private Map<Integer, String> setFieldValue(AuthType authType) {
-		Map<Integer, String> values = new HashMap<Integer, String>();
+	private Map<String, String> setFieldValue(AuthType authType) {
+		Map<String, String> values = new HashMap<String, String>();
 		for (Field field : authType.getFields()) {
 			String value = cslView.getFieldValue(field);
-			values.put(field.getId(), value);
+			values.put(field.getName(), value);
 		}
 		return values;
 	}
@@ -86,6 +93,16 @@ public class Action {
 			}
 
 		}
+	}
+
+	public static int addfield(String name) {
+	  if(fields.containsValue(name)) {
+		  return -1;
+	  }
+	  else {
+		  fields.put(++fieldCount,name);
+		 return fieldCount;  
+	  }
 	}
 
 }

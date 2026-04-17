@@ -1,84 +1,87 @@
 package model;
 
+import java.util.Date;
 import java.util.List;
+import model.Option;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import controller.Action;
 
 public class Field {
-
-	private int id;
-	private String name;
-	private String type;
+	
 	private String label;
-	private List<Option> options;
-	private static int count = 0;
+	private String key;
+	private String fieldType;
 	private boolean isRequired;
-
-	public Field() {
-		this.id = ++count;
-	}
-
-	public Field(String name, String type, String labelName, boolean isRequired, List<Option> options) {
-		this.id = ++count;
-		this.name = name;
-		this.type = type;
-		this.label = labelName;
-		this.isRequired = isRequired;
-		this.setOptions(options);
-	}
-
-	public int getId() {
-		return id;
-	}
-
-	public void setId(int id) {
-		this.id = id;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	public String getType() {
-		return type;
-	}
-
-	public void setType(String type) {
-		this.type = type;
-	}
-
-	public static int getCount() {
-		return count;
-	}
-
-	public static void setCount(int count) {
-		Field.count = count;
-	}
-
+	private boolean isSecret;
+	private boolean isVisibleToMembers;
+	private boolean isEditableByMembers;
+	private String value;
+	private int position;
+	private Date createdON;
+	
 	public String getLabel() {
 		return label;
 	}
-
-	public void setLabel(String labelName) {
-		this.label = labelName;
+	public void setLabel(String label) {
+		this.label = label;
 	}
-
+	public String getKey() {
+		return key;
+	}
+	public void setKey(String key) {
+		this.key = key;
+	}
+	public String getFieldType() {
+		return fieldType;
+	}
+	public void setFieldType(String fieldType) {
+		this.fieldType = fieldType;
+	}
 	public boolean isRequired() {
 		return isRequired;
 	}
-
 	public void setRequired(boolean isRequired) {
 		this.isRequired = isRequired;
 	}
-
-	public List<Option> getOptions() {
-		return options;
+	public boolean isSecret() {
+		return isSecret;
 	}
-
-	public void setOptions(List<Option> options) {
-		this.options = options;
+	public void setSecret(boolean isSecret) {
+		this.isSecret = isSecret;
 	}
-
+	public boolean isVisibleToMembers() {
+		return isVisibleToMembers;
+	}
+	public void setVisibleToMembers(boolean isVisibleToMembers) {
+		this.isVisibleToMembers = isVisibleToMembers;
+	}
+	public boolean isEditableByMembers() {
+		return isEditableByMembers;
+	}
+	public void setEditableByMembers(boolean isEditableByMembers) {
+		this.isEditableByMembers = isEditableByMembers;
+	}
+	public String getValue() {
+		return value;
+	}
+	public void setValue(String value) {
+		this.value = value;
+	}
+	public int getPosition() {
+		return position;
+	}
+	public void setPosition(int position) {
+		this.position = position;
+	}
+	public Date getCreatedON() {
+		return createdON;
+	}
+	public void setCreatedON(Date createdON) {
+		this.createdON = createdON;
+	}
+	
+	
 }
