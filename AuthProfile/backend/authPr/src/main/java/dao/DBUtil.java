@@ -5,20 +5,27 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBUtil {
-	
 
-   public static Connection getConnection() {
-	   String url = "jdbc:mysql://localhost:3306/auth_profiles";
-	   String username = "root";
-	   String password = "Krithvi-123";
-	   Connection con = null;
-		try {
-			con = DriverManager.getConnection(url,username,password);
-		} catch (SQLException e) {
-  			e.printStackTrace();
-  		  System.err.println("[ERROR]: Can't connect to the DB , connection is not made");
-		}
-	   return con;
-   }
-   
+    private static final String URL      = "jdbc:mysql://localhost:3306/auth_profiles?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "Krithvi-123";
+
+    static {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("MySQL JDBC driver not found on classpath", e);
+        }
+    }
+
+    public static Connection getConnection() {
+        try {
+            return DriverManager.getConnection(URL, USERNAME, PASSWORD);
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                "Failed to connect to MySQL. URL=" + URL + ", USERNAME=" + USERNAME + ", ERROR=" + e.getMessage(),
+                e
+            );
+        }
+    }
 }

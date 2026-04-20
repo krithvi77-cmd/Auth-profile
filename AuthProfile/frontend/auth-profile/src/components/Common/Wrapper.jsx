@@ -1,14 +1,11 @@
 import './Wrapper.css'
 import SideBar from './SideBar';
-import AuthProfile from '../AuthProfile/AuthProfile';
 
-
-function Wrapper(){
+function Wrapper({ children }) {
   return (
     <div className="main">
-      <SideBar/>
-      {/* <SidePanel/> */}
-      <AuthProfile/>
+      <SideBar />
+      {children}
     </div>
   )
 }

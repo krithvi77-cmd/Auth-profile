@@ -83,3 +83,11 @@ span[contenteditable]:focus {
 span[contenteditable]:focus:empty::before {
   content: "";
 }
+.auth-profile-error {
+    background: #3a1f1f;
+    color: #ff8080;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin: 10px 0;
+    font-size: 13px;
+}
