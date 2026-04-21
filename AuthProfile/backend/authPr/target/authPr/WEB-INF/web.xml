@@ -24,7 +24,7 @@
 
     <servlet>
         <servlet-name>ConnectionServlet</servlet-name>
-        <!-- <servlet-class>controller.ProfileServlet</servlet-class> -->
+        <servlet-class>controller.ConnectionServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
     </servlet>
 
@@ -32,7 +32,5 @@
         <servlet-name>ConnectionServlet</servlet-name>
         <url-pattern>/api/connection/*</url-pattern>
     </servlet-mapping>
-
-    <servlet>
 
 </web-app>

@@ -33,6 +33,4 @@
         <url-pattern>/api/connection/*</url-pattern>
     </servlet-mapping>
 
-    <servlet>
-
 </web-app>
