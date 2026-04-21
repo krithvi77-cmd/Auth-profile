@@ -13,3 +13,9 @@
     padding: 15px 30px;
     color:#CECECE;
 }
+.display-empty {
+    padding: 40px 30px;
+    color: #888;
+    font-size: 14px;
+    text-align: center;
+}

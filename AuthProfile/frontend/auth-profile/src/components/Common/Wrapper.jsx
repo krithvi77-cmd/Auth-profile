@@ -1,14 +1,13 @@
 import './Wrapper.css'
 import SideBar from './SideBar';
-import AuthProfile from '../AuthProfile/AuthProfile';
+import SidePanel from './SidePanel';
 
-
-function Wrapper(){
+function Wrapper({ children, activeView, onSelectView }) {
   return (
     <div className="main">
-      <SideBar/>
-      {/* <SidePanel/> */}
-      <AuthProfile/>
+      <SideBar />
+      <SidePanel activeView={activeView} onSelectView={onSelectView} />
+      {children}
     </div>
   )
 }
