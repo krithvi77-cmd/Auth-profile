@@ -1,0 +1,62 @@
+/* === Connection card row — grid columns live on .connection-display
+       so this file only styles content inside the cells. === */
+
+.connection-card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.connection-card-icon {
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 17px;
+    min-width: 18px;
+    text-align: center;
+    color: #CECECE;
+    flex-shrink: 0;
+}
+
+.connection-card-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.connection-card-tag {
+    background-color: #2a2a2a;
+    color: #9a9a9a;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid #3a3a3a;
+    flex-shrink: 0;
+}
+
+.connection-card-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: visible;
+}
+
+.connection-link-btn {
+    color: #338BFF;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.connection-link-btn:hover {
+    text-decoration: underline;
+}
+
+.connection-link-sep {
+    color: #444;
+    font-size: 13px;
+}

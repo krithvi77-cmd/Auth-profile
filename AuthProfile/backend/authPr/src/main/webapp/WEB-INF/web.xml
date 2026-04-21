@@ -7,7 +7,19 @@
 
     <display-name>Auth Profile API</display-name>
 
-    <!-- Servlets and filters are registered via @WebServlet / @WebFilter annotations.
-         See controller.ProfileServlet and controller.CorsFilter. -->
+    <welcome-file-list>
+          <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+
+    <servlet>
+        <servlet-name>AuthProfileServlet</servlet-name>
+        <servlet-class>controller.ProfileServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>AuthProfileServlet</servlet-name>
+        <url-pattern>/api/profiles/*</url-pattern>
+    </servlet-mapping>
 
 </web-app>

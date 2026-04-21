@@ -1,0 +1,50 @@
+/* === Connection table — mirrors AuthProfile Display.css ===
+   Both header and card use the SAME grid-template-columns via
+   a shared CSS custom property so rows never misalign, no matter
+   how long the connection name or "created by" field is. */
+
+.connection-display {
+    background-color: #212121;
+    border-radius: 10px;
+    --conn-grid: 2.2fr 1fr 1.5fr 1.5fr;
+}
+
+.connection-display-header,
+.connection-card {
+    display: grid;
+    grid-template-columns: var(--conn-grid);
+    align-items: center;
+    padding: 15px 30px;
+    border-bottom: 1px solid #333333;
+    color: #CECECE;
+    font-size: 15px;
+    box-sizing: border-box;
+    gap: 10px;
+}
+
+.connection-display-header {
+    font-weight: 400;
+}
+
+.connection-display-body .connection-card:last-child {
+    border-bottom: none;
+}
+
+.connection-card > div,
+.connection-display-header > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.connection-card:hover {
+    background-color: #272727;
+}
+
+.connection-display-empty {
+    padding: 40px 30px;
+    color: #888;
+    font-size: 14px;
+    text-align: center;
+}

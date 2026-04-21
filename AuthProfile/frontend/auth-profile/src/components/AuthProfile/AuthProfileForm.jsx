@@ -1,70 +1,58 @@
 import { useState } from 'react';
 import Button from '../Common/Button';
 
-// maps backend auth_type id -> radio value used in this form
-const AUTH_ID_TO_METHOD = { 1: 'basic_auth', 2: 'oauth_v2', 3: 'api_key', 4: 'jwt' };
+
+
+const AUTH_ID_TO_METHOD = { 1: 'basic_auth', 2: 'oauth_v2', 3: 'api_key' };
+
+
+function pickValue(initial, key, fallback = '') {
+  if (!initial || !Array.isArray(initial.fields)) return fallback;
+  const f = initial.fields.find(x => x.key === key && !x.isCustom);
+  return f ? (f.value ?? fallback) : fallback;
+}
+
+
+function pickCustom(initial) {
+  if (!initial || !Array.isArray(initial.fields)) return null;
+  return initial.fields.find(x => x.isCustom) || null;
+}
 
 function AuthProfileForm({ onSave, onCancel, initial = null }) {
 
   const isEdit = !!initial;
 
-  // Pick the right radio based on auth_type + a heuristic for v1 vs v2
   function detectMethod(ini) {
     if (!ini) return 'basic_auth';
-    const t = ini.auth_type;
-    if (t === 2 && ini.values && ini.values.request_token_url) return 'oauth_v1';
-    return AUTH_ID_TO_METHOD[t] || 'basic_auth';
+    return AUTH_ID_TO_METHOD[ini.auth_type] || 'basic_auth';
   }
 
   const [authMethod, setAuthMethod] = useState(detectMethod(initial));
-
-  // two checkboxes
-  const [onPremises, setOnPremises]       = useState(false);
+  const [onPremises, setOnPremises] = useState(false);
   const [enableTestUrl, setEnableTestUrl] = useState(false);
 
-  // common field (shown for every method)
   const [profileName, setProfileName] = useState(initial?.name || '');
 
-  // prefill source (single object so every section can read from it)
-  const v = initial?.values || {};
 
-  // basic auth fields
-  const [username, setUsername] = useState(v.username || '');
-  const [password, setPassword] = useState(v.password || '');
+  const [username, setUsername] = useState(pickValue(initial, 'username'));
+  const [password, setPassword] = useState(pickValue(initial, 'password'));
 
-  // oauth v1 fields
-  const [v1ClientId, setV1ClientId]         = useState(v.client_id || '');
-  const [v1ClientSecret, setV1ClientSecret] = useState(v.client_secret || '');
-  const [v1RequestUrl, setV1RequestUrl]     = useState(v.request_token_url || '');
-  const [v1AuthUrl, setV1AuthUrl]           = useState(v.authorization_url || '');
-  const [v1AccessUrl, setV1AccessUrl]       = useState(v.access_token_url || '');
-  const [v1Scopes, setV1Scopes]             = useState(v.scopes || '');
+  const [v2ClientId, setV2ClientId] = useState(pickValue(initial, 'client_id'));
+  const [v2ClientSecret, setV2ClientSecret] = useState(pickValue(initial, 'client_secret'));
+  const [v2AuthUrl, setV2AuthUrl] = useState(pickValue(initial, 'authorization_url'));
+  const [v2AccessUrl, setV2AccessUrl] = useState(pickValue(initial, 'access_token_url'));
+  const [v2Scopes, setV2Scopes] = useState(pickValue(initial, 'scopes'));
+  const [v2Placement, setV2Placement] = useState(pickValue(initial, 'token_placement'));
 
-  // oauth v2 fields
-  const [v2ClientId, setV2ClientId]         = useState(v.client_id || '');
-  const [v2ClientSecret, setV2ClientSecret] = useState(v.client_secret || '');
-  const [v2AuthUrl, setV2AuthUrl]           = useState(v.authorization_url || '');
-  const [v2AccessUrl, setV2AccessUrl]       = useState(v.access_token_url || '');
-  const [v2Scopes, setV2Scopes]             = useState(v.scopes || '');
-  const [v2Placement, setV2Placement]       = useState(v.token_placement || '');
+  const initialCustom = pickCustom(initial);
+  const [apiFieldLabel, setApiFieldLabel] = useState(initialCustom?.label || '');
+  const [apiFieldType, setApiFieldType] = useState(initialCustom?.fieldType || '');
+  const [apiParamName, setApiParamName] = useState(initialCustom?.key || '');
+  const [apiValue] = useState(initialCustom?.value || '');
+  const [apiPlacement, setApiPlacement] = useState(initialCustom?.placement || '');
 
-  // jwt fields
-  const [jwtIssuer, setJwtIssuer]       = useState(v.issuer || '');
-  const [jwtSubject, setJwtSubject]     = useState(v.subject || '');
-  const [jwtAudience, setJwtAudience]   = useState(v.audience || '');
-  const [jwtSecret, setJwtSecret]       = useState(v.secret_key || '');
-  const [jwtAlgorithm, setJwtAlgorithm] = useState(v.algorithm || '');
-
-  // api key fields
-  const [apiFieldLabel, setApiFieldLabel]   = useState(v.field_label || '');
-  const [apiFieldType, setApiFieldType]     = useState(v.field_type || '');
-  const [apiParamName, setApiParamName]     = useState(v.parameter_name || '');
-  const [apiPlacement, setApiPlacement]     = useState(v.api_key_placement || '');
-
-  // one errors object for all fields
   const [errors, setErrors] = useState({});
 
-  // clear the error of a single field when user types
   function clearError(key) {
     if (errors[key]) {
       const next = { ...errors };
@@ -73,7 +61,6 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
     }
   }
 
-  // ------- SAVE -------
   function handleSave() {
     const next = {};
 
@@ -84,81 +71,68 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
       if (!password.trim()) next.password = 'Password is required';
     }
 
-    if (authMethod === 'oauth_v1') {
-      if (!v1ClientId.trim())     next.v1ClientId     = 'Client ID is required';
-      if (!v1ClientSecret.trim()) next.v1ClientSecret = 'Client Secret is required';
-      if (!v1RequestUrl.trim())   next.v1RequestUrl   = 'Request Token URL is required';
-      if (!v1AuthUrl.trim())      next.v1AuthUrl      = 'Authorization URL is required';
-      if (!v1AccessUrl.trim())    next.v1AccessUrl    = 'Access Token URL is required';
-    }
-
     if (authMethod === 'oauth_v2') {
-      if (!v2ClientId.trim())     next.v2ClientId     = 'Client ID is required';
+      if (!v2ClientId.trim()) next.v2ClientId = 'Client ID is required';
       if (!v2ClientSecret.trim()) next.v2ClientSecret = 'Client Secret is required';
-      if (!v2AuthUrl.trim())      next.v2AuthUrl      = 'Authorization URL is required';
-      if (!v2AccessUrl.trim())    next.v2AccessUrl    = 'Access Token URL is required';
-      if (!v2Placement.trim())    next.v2Placement    = 'Access Token Placement is required';
-    }
-
-    if (authMethod === 'jwt') {
-      if (!jwtIssuer.trim())    next.jwtIssuer    = 'Issuer is required';
-      if (!jwtSecret.trim())    next.jwtSecret    = 'Secret Key is required';
-      if (!jwtAlgorithm.trim()) next.jwtAlgorithm = 'Algorithm is required';
+      if (!v2AuthUrl.trim()) next.v2AuthUrl = 'Authorization URL is required';
+      if (!v2AccessUrl.trim()) next.v2AccessUrl = 'Access Token URL is required';
+      if (!v2Placement.trim()) next.v2Placement = 'Access Token Placement is required';
     }
 
     if (authMethod === 'api_key') {
       if (!apiFieldLabel.trim()) next.apiFieldLabel = 'Field Label is required';
-      if (!apiFieldType.trim())  next.apiFieldType  = 'Field Type is required';
-      if (!apiParamName.trim())  next.apiParamName  = 'Parameter Name is required';
-      if (!apiPlacement.trim())  next.apiPlacement  = 'API Key Placement is required';
+      if (!apiFieldType.trim()) next.apiFieldType = 'Field Type is required';
+      if (!apiParamName.trim()) next.apiParamName = 'Parameter Name is required';
+      if (!apiPlacement.trim()) next.apiPlacement = 'API Key Placement is required';
     }
 
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    // build payload
     let authCode = 1;
-    if (authMethod === 'oauth_v1') authCode = 2;
     if (authMethod === 'oauth_v2') authCode = 2;
-    if (authMethod === 'api_key')  authCode = 3;
-    if (authMethod === 'jwt')      authCode = 4;
+    if (authMethod === 'api_key') authCode = 3;
 
-    let values = {};
+    let fields = [];
+
     if (authMethod === 'basic_auth') {
-      values = { username, password };
-    } else if (authMethod === 'oauth_v1') {
-      values = {
-        client_id: v1ClientId,
-        client_secret: v1ClientSecret,
-        request_token_url: v1RequestUrl,
-        authorization_url: v1AuthUrl,
-        access_token_url: v1AccessUrl,
-        scopes: v1Scopes,
-      };
+      fields = [
+        { key: 'username', value: username, fieldType: 'text', isCustom: false },
+        { key: 'password', value: password, fieldType: 'password', isCustom: false },
+      ];
     } else if (authMethod === 'oauth_v2') {
-      values = {
-        client_id: v2ClientId,
-        client_secret: v2ClientSecret,
-        authorization_url: v2AuthUrl,
-        access_token_url: v2AccessUrl,
-        scopes: v2Scopes,
-        token_placement: v2Placement,
-      };
-    } else if (authMethod === 'jwt') {
-      values = {
-        issuer: jwtIssuer,
-        subject: jwtSubject,
-        audience: jwtAudience,
-        secret_key: jwtSecret,
-        algorithm: jwtAlgorithm,
-      };
+      fields = [
+        {
+          key: 'client_id',
+          value: v2ClientId,
+          fieldType: 'text', isCustom: false
+        },
+        {
+          key: 'client_secret',
+          value: v2ClientSecret, fieldType: 'password', isCustom: false
+        },
+        {
+          key: 'authorization_url',
+          value: v2AuthUrl, fieldType: 'text', isCustom: false
+        },
+        { key: 'access_token_url', value: v2AccessUrl, fieldType: 'text', isCustom: false },
+        { key: 'scopes', value: v2Scopes, fieldType: 'text', isCustom: false },
+        {
+          key: 'token_placement', value: v2Placement,
+          fieldType: 'text', isCustom: false, placement: v2Placement,
+        },
+      ];
     } else if (authMethod === 'api_key') {
-      values = {
-        field_label: apiFieldLabel,
-        field_type: apiFieldType,
-        parameter_name: apiParamName,
-        api_key_placement: apiPlacement,
-      };
+      fields = [
+        {
+          key: apiParamName,
+          value: apiValue,
+          fieldType: apiFieldType,
+          isCustom: true,
+          label: apiFieldLabel,
+          placement: apiPlacement,
+        },
+      ];
     }
 
     if (onSave) {
@@ -167,40 +141,35 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         auth_type: authCode,
         on_premises: onPremises,
         enable_test_url: enableTestUrl,
-        values: values,
+        fields,
       });
     }
   }
 
-  // ------- RENDER -------
   return (
     <form onSubmit={(e) => e.preventDefault()}>
 
-      {/* ===== Authentication Method ===== */}
       <div className="panel_section_title">Authentication Method</div>
 
       <div className="panel_radio_group">
         <label className="panel_radio_item">
-          <input
-            type="radio" name="auth_method" value="basic_auth"
+          <input type="radio" name="auth_method" value="basic_auth"
             checked={authMethod === 'basic_auth'}
             onChange={() => { setAuthMethod('basic_auth'); setErrors({}); }}
           />
           <span>Basic Auth</span>
         </label>
-
+        
         <label className="panel_radio_item">
-          <input
-            type="radio" name="auth_method" value="oauth_v1"
+          <input type="radio" name="auth_method" value="oauth_v2"
             checked={authMethod === 'oauth_v1'}
             onChange={() => { setAuthMethod('oauth_v1'); setErrors({}); }}
           />
-          <span>OAuth v1.0a</span>
+          <span>OAuth</span>
         </label>
 
         <label className="panel_radio_item">
-          <input
-            type="radio" name="auth_method" value="oauth_v2"
+          <input type="radio" name="auth_method" value="oauth_v2"
             checked={authMethod === 'oauth_v2'}
             onChange={() => { setAuthMethod('oauth_v2'); setErrors({}); }}
           />
@@ -208,17 +177,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         </label>
 
         <label className="panel_radio_item">
-          <input
-            type="radio" name="auth_method" value="jwt"
-            checked={authMethod === 'jwt'}
-            onChange={() => { setAuthMethod('jwt'); setErrors({}); }}
-          />
-          <span>JWT Auth</span>
-        </label>
-
-        <label className="panel_radio_item">
-          <input
-            type="radio" name="auth_method" value="api_key"
+          <input type="radio" name="auth_method" value="api_key"
             checked={authMethod === 'api_key'}
             onChange={() => { setAuthMethod('api_key'); setErrors({}); }}
           />
@@ -226,24 +185,18 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         </label>
       </div>
 
-      {/* ===== On-premises checkbox ===== */}
       <label className="panel_checkbox_item">
-        <input
-          type="checkbox"
-          checked={onPremises}
-          onChange={(e) => setOnPremises(e.target.checked)}
-        />
+        <input type="checkbox" checked={onPremises}
+          onChange={(e) => setOnPremises(e.target.checked)} />
         <span>This app is installed on-premises</span>
         <i className="bi bi-info-circle"></i>
       </label>
 
-      {/* ===== Auth Profile Name (always shown) ===== */}
       <div className="panel_field">
         <label className="panel_field_label">
           Auth Profile Name<span className="panel_required">*</span>
         </label>
-        <input
-          type="text"
+        <input type="text"
           className={errors.profileName ? 'panel_input panel_input_error' : 'panel_input'}
           value={profileName}
           onChange={(e) => { setProfileName(e.target.value); clearError('profileName'); }}
@@ -251,125 +204,13 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         {errors.profileName && <span className="panel_error_tooltip">{errors.profileName}</span>}
       </div>
 
-      {/* ===================== BASIC AUTH ===================== */}
+      {}
       {authMethod === 'basic_auth' && (
         <>
-          <div className="panel_section_title panel_section_title_sub">
-            Basic Auth Configuration
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Username<span className="panel_required">*</span>
-            </label>
-            <input
-              type="text"
-              className={errors.username ? 'panel_input panel_input_error' : 'panel_input'}
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); clearError('username'); }}
-            />
-            {errors.username && <span className="panel_error_tooltip">{errors.username}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Password<span className="panel_required">*</span>
-            </label>
-            <input
-              type="password"
-              className={errors.password ? 'panel_input panel_input_error' : 'panel_input'}
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); clearError('password'); }}
-            />
-            {errors.password && <span className="panel_error_tooltip">{errors.password}</span>}
-          </div>
         </>
       )}
 
-      {/* ===================== OAUTH V1 ===================== */}
-      {authMethod === 'oauth_v1' && (
-        <>
-          <div className="panel_section_title panel_section_title_sub">
-            OAuth v1.0a Configuration
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Client ID<span className="panel_required">*</span>
-            </label>
-            <input
-              type="text"
-              className={errors.v1ClientId ? 'panel_input panel_input_error' : 'panel_input'}
-              value={v1ClientId}
-              onChange={(e) => { setV1ClientId(e.target.value); clearError('v1ClientId'); }}
-            />
-            {errors.v1ClientId && <span className="panel_error_tooltip">{errors.v1ClientId}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Client Secret<span className="panel_required">*</span>
-            </label>
-            <input
-              type="password"
-              className={errors.v1ClientSecret ? 'panel_input panel_input_error' : 'panel_input'}
-              value={v1ClientSecret}
-              onChange={(e) => { setV1ClientSecret(e.target.value); clearError('v1ClientSecret'); }}
-            />
-            {errors.v1ClientSecret && <span className="panel_error_tooltip">{errors.v1ClientSecret}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Request Token URL<span className="panel_required">*</span>
-            </label>
-            <input
-              type="text"
-              className={errors.v1RequestUrl ? 'panel_input panel_input_error' : 'panel_input'}
-              value={v1RequestUrl}
-              onChange={(e) => { setV1RequestUrl(e.target.value); clearError('v1RequestUrl'); }}
-            />
-            {errors.v1RequestUrl && <span className="panel_error_tooltip">{errors.v1RequestUrl}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Authorization URL<span className="panel_required">*</span>
-            </label>
-            <input
-              type="text"
-              className={errors.v1AuthUrl ? 'panel_input panel_input_error' : 'panel_input'}
-              value={v1AuthUrl}
-              onChange={(e) => { setV1AuthUrl(e.target.value); clearError('v1AuthUrl'); }}
-            />
-            {errors.v1AuthUrl && <span className="panel_error_tooltip">{errors.v1AuthUrl}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Access Token URL<span className="panel_required">*</span>
-            </label>
-            <input
-              type="text"
-              className={errors.v1AccessUrl ? 'panel_input panel_input_error' : 'panel_input'}
-              value={v1AccessUrl}
-              onChange={(e) => { setV1AccessUrl(e.target.value); clearError('v1AccessUrl'); }}
-            />
-            {errors.v1AccessUrl && <span className="panel_error_tooltip">{errors.v1AccessUrl}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">Scopes</label>
-            <textarea
-              className="panel_input panel_textarea"
-              value={v1Scopes}
-              onChange={(e) => setV1Scopes(e.target.value)}
-            />
-          </div>
-        </>
-      )}
-
-      {/* ===================== OAUTH V2 ===================== */}
+      { }
       {authMethod === 'oauth_v2' && (
         <>
           <div className="panel_section_title panel_section_title_sub">
@@ -380,8 +221,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
             <label className="panel_field_label">
               Client ID<span className="panel_required">*</span>
             </label>
-            <input
-              type="text"
+            <input type="text"
               className={errors.v2ClientId ? 'panel_input panel_input_error' : 'panel_input'}
               value={v2ClientId}
               onChange={(e) => { setV2ClientId(e.target.value); clearError('v2ClientId'); }}
@@ -393,8 +233,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
             <label className="panel_field_label">
               Client Secret<span className="panel_required">*</span>
             </label>
-            <input
-              type="password"
+            <input type="password"
               className={errors.v2ClientSecret ? 'panel_input panel_input_error' : 'panel_input'}
               value={v2ClientSecret}
               onChange={(e) => { setV2ClientSecret(e.target.value); clearError('v2ClientSecret'); }}
@@ -406,8 +245,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
             <label className="panel_field_label">
               Authorization URL<span className="panel_required">*</span>
             </label>
-            <input
-              type="text"
+            <input type="text"
               className={errors.v2AuthUrl ? 'panel_input panel_input_error' : 'panel_input'}
               value={v2AuthUrl}
               onChange={(e) => { setV2AuthUrl(e.target.value); clearError('v2AuthUrl'); }}
@@ -419,8 +257,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
             <label className="panel_field_label">
               Access Token URL<span className="panel_required">*</span>
             </label>
-            <input
-              type="text"
+            <input type="text"
               className={errors.v2AccessUrl ? 'panel_input panel_input_error' : 'panel_input'}
               value={v2AccessUrl}
               onChange={(e) => { setV2AccessUrl(e.target.value); clearError('v2AccessUrl'); }}
@@ -430,8 +267,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
 
           <div className="panel_field">
             <label className="panel_field_label">Scopes</label>
-            <textarea
-              className="panel_input panel_textarea"
+            <textarea className="panel_input panel_textarea"
               value={v2Scopes}
               onChange={(e) => setV2Scopes(e.target.value)}
             />
@@ -455,79 +291,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         </>
       )}
 
-      {/* ===================== JWT ===================== */}
-      {authMethod === 'jwt' && (
-        <>
-          <div className="panel_section_title panel_section_title_sub">
-            JWT Configuration
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Issuer<span className="panel_required">*</span>
-            </label>
-            <input
-              type="text"
-              className={errors.jwtIssuer ? 'panel_input panel_input_error' : 'panel_input'}
-              value={jwtIssuer}
-              onChange={(e) => { setJwtIssuer(e.target.value); clearError('jwtIssuer'); }}
-            />
-            {errors.jwtIssuer && <span className="panel_error_tooltip">{errors.jwtIssuer}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">Subject</label>
-            <input
-              type="text"
-              className="panel_input"
-              value={jwtSubject}
-              onChange={(e) => setJwtSubject(e.target.value)}
-            />
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">Audience</label>
-            <input
-              type="text"
-              className="panel_input"
-              value={jwtAudience}
-              onChange={(e) => setJwtAudience(e.target.value)}
-            />
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Secret Key<span className="panel_required">*</span>
-            </label>
-            <input
-              type="password"
-              className={errors.jwtSecret ? 'panel_input panel_input_error' : 'panel_input'}
-              value={jwtSecret}
-              onChange={(e) => { setJwtSecret(e.target.value); clearError('jwtSecret'); }}
-            />
-            {errors.jwtSecret && <span className="panel_error_tooltip">{errors.jwtSecret}</span>}
-          </div>
-
-          <div className="panel_field">
-            <label className="panel_field_label">
-              Algorithm<span className="panel_required">*</span>
-            </label>
-            <select
-              className={errors.jwtAlgorithm ? 'panel_input panel_input_error' : 'panel_input'}
-              value={jwtAlgorithm}
-              onChange={(e) => { setJwtAlgorithm(e.target.value); clearError('jwtAlgorithm'); }}
-            >
-              <option value="" disabled>Select</option>
-              <option value="HS256">HS256</option>
-              <option value="HS512">HS512</option>
-              <option value="RS256">RS256</option>
-            </select>
-            {errors.jwtAlgorithm && <span className="panel_error_tooltip">{errors.jwtAlgorithm}</span>}
-          </div>
-        </>
-      )}
-
-      {/* ===================== API KEY ===================== */}
+      { }
       {authMethod === 'api_key' && (
         <>
           <div className="panel_section_title panel_section_title_sub">
@@ -539,10 +303,9 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
               Field Label<span className="panel_required">*</span>
             </label>
             <p className="panel_field_desc">
-              Label for the field that will store the API key when creating a connection
+              Label shown to the user in the Connection screen
             </p>
-            <input
-              type="text"
+            <input type="text"
               className={errors.apiFieldLabel ? 'panel_input panel_input_error' : 'panel_input'}
               value={apiFieldLabel}
               onChange={(e) => { setApiFieldLabel(e.target.value); clearError('apiFieldLabel'); }}
@@ -555,7 +318,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
               Field Type<span className="panel_required">*</span>
             </label>
             <p className="panel_field_desc">
-              Choose whether the API key should be handled as plain text or as a password
+              Controls the input type rendered in the Connection screen
             </p>
             <select
               className={errors.apiFieldType ? 'panel_input panel_input_error' : 'panel_input'}
@@ -574,10 +337,9 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
               Parameter Name<span className="panel_required">*</span>
             </label>
             <p className="panel_field_desc">
-              The key name that will be added to the request when sending the API key
+              Key sent in the request (e.g. "x-api-key", "api_key")
             </p>
-            <input
-              type="text"
+            <input type="text"
               className={errors.apiParamName ? 'panel_input panel_input_error' : 'panel_input'}
               value={apiParamName}
               onChange={(e) => { setApiParamName(e.target.value); clearError('apiParamName'); }}
@@ -590,7 +352,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
               API Key Placement<span className="panel_required">*</span>
             </label>
             <p className="panel_field_desc">
-              Select where the API key should be added in the request
+              Where the API key is attached on outgoing requests
             </p>
             <select
               className={errors.apiPlacement ? 'panel_input panel_input_error' : 'panel_input'}
@@ -606,20 +368,15 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         </>
       )}
 
-      {/* ===== Enable test URL ===== */}
       <label className="panel_checkbox_item panel_test_url">
-        <input
-          type="checkbox"
-          checked={enableTestUrl}
-          onChange={(e) => setEnableTestUrl(e.target.checked)}
-        />
+        <input type="checkbox" checked={enableTestUrl}
+          onChange={(e) => setEnableTestUrl(e.target.checked)} />
         <span>Enable test URL</span>
       </label>
       <p className="panel_field_desc panel_test_url_desc">
         Configure a test URL to check if connections created for your app are working correctly
       </p>
 
-      {/* ===== Footer buttons ===== */}
       <div className="panel_footer">
         <Button text="Cancel" color="black-light" onClick={onCancel} />
         <Button text={isEdit ? 'Update' : 'Save'} color="blue" onClick={handleSave} />

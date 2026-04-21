@@ -1,17 +1,18 @@
 package model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+
 public class Field {
 
 	private int id;
 	private int profileId;
-	private String label;
 	private String key;
-	private String fieldType;
-	private boolean isRequired;
-	private boolean isSecret;
-	private boolean visibleToMember = true;
-	private boolean editableByMember = true;
-	private String defaultValue;
+	private String label;          
+	private String fieldType;       
+	private String defaultValue;    
+	private boolean isCustom;      
+	private String placement;       
 	private int position;
 
 	public Field() {
@@ -33,20 +34,20 @@ public class Field {
 		this.profileId = profileId;
 	}
 
-	public String getLabel() {
-		return label;
-	}
-
-	public void setLabel(String label) {
-		this.label = label;
-	}
-
 	public String getKey() {
 		return key;
 	}
 
 	public void setKey(String key) {
 		this.key = key;
+	}
+
+	public String getLabel() {
+		return label;
+	}
+
+	public void setLabel(String label) {
+		this.label = label;
 	}
 
 	public String getFieldType() {
@@ -57,44 +58,30 @@ public class Field {
 		this.fieldType = fieldType;
 	}
 
-	public boolean isRequired() {
-		return isRequired;
-	}
-
-	public void setRequired(boolean required) {
-		isRequired = required;
-	}
-
-	public boolean isSecret() {
-		return isSecret;
-	}
-
-	public void setSecret(boolean secret) {
-		isSecret = secret;
-	}
-
-	public boolean isVisibleToMember() {
-		return visibleToMember;
-	}
-
-	public void setVisibleToMember(boolean visibleToMember) {
-		this.visibleToMember = visibleToMember;
-	}
-
-	public boolean isEditableByMember() {
-		return editableByMember;
-	}
-
-	public void setEditableByMember(boolean editableByMember) {
-		this.editableByMember = editableByMember;
-	}
-
 	public String getDefaultValue() {
 		return defaultValue;
 	}
 
 	public void setDefaultValue(String defaultValue) {
 		this.defaultValue = defaultValue;
+	}
+
+	@JsonProperty("isCustom")
+	public boolean isCustom() {
+		return isCustom;
+	}
+
+	@JsonProperty("isCustom")
+	public void setCustom(boolean custom) {
+		isCustom = custom;
+	}
+
+	public String getPlacement() {
+		return placement;
+	}
+
+	public void setPlacement(String placement) {
+		this.placement = placement;
 	}
 
 	public int getPosition() {

@@ -1,10 +1,3 @@
-// ----------------------------------------------------------------
-// Thin REST client for the Tomcat back-end.
-// Override the base URL with:   VITE_API_BASE=http://host:8080/authPr
-// ----------------------------------------------------------------
-
-// Empty BASE = use same-origin; Vite dev server proxies /api -> Tomcat:8080.
-// In production set VITE_API_BASE to the back-end URL (e.g. https://api.example.com).
 const BASE = import.meta.env.VITE_API_BASE || '';
 
 async function request(path, options = {}) {

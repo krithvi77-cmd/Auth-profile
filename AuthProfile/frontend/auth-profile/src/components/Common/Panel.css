@@ -1,4 +1,3 @@
-/* ---------- Panel Shell ---------- */
 .panel {
     z-index: 5;
     background-color: #1E1D1D;
@@ -12,9 +11,16 @@
     flex-direction: column;
 }
 
+.panel-tint{
+    background-color: #000000;
+    opacity: 0.85;
+    width: 42vh;
+    height: 100%;
+}
+
 
 .panel_logo {
-    background-image: url('src/assets/authpr_logo.png');
+    background-image: url('../../assets/authpr_logo.png');
     background-repeat: no-repeat;
     background-position: center;
     padding: 20px;
@@ -84,7 +90,7 @@
     height: 90px;
     background-color: #232a3a;
     border-radius: 8px;
-    background-image: url('src/assets/authpr_logo.png');
+    background-image: url('../../assets/authpr_logo.png');
     background-repeat: no-repeat;
     background-position: center;
     background-size: 50%;
@@ -162,7 +168,6 @@ input[type="radio"]:checked {
     box-shadow: inset 0 0 0 3px #1E1D1D;
 }
 
-/* ---------- Checkbox ---------- */
 .panel_checkbox_item {
     display: inline-flex;
     align-items: center;
