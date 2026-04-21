@@ -21,3 +21,11 @@ export const profileApi = {
   update: (id, data)  => request(`/api/profiles/${id}`,  { method: 'PUT',    body: JSON.stringify(data) }),
   remove: (id)        => request(`/api/profiles/${id}`,  { method: 'DELETE' }),
 };
+
+export const connectionApi = {
+  list:   ()          => request('/api/connection'),
+  get:    (id)        => request(`/api/connection/${id}`),
+  create: (conn)      => request('/api/connection',       { method: 'POST',   body: JSON.stringify(conn) }),
+  update: (id, data)  => request(`/api/connection/${id}`, { method: 'PUT',    body: JSON.stringify(data) }),
+  remove: (id)        => request(`/api/connection/${id}`, { method: 'DELETE' }),
+};

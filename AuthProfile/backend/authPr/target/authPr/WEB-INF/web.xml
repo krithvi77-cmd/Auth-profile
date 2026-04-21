@@ -22,4 +22,17 @@
         <url-pattern>/api/profiles/*</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>ConnectionServlet</servlet-name>
+        <!-- <servlet-class>controller.ProfileServlet</servlet-class> -->
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>ConnectionServlet</servlet-name>
+        <url-pattern>/api/connection/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+
 </web-app>

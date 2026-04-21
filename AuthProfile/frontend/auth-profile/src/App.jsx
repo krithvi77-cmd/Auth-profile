@@ -8,8 +8,10 @@ import Panel from './components/Common/Panel'
 import AuthProfile from './components/AuthProfile/AuthProfile'
 import AuthProfileForm from './components/AuthProfile/AuthProfileForm'
 import Connection from './components/Connection/Connection'
+import AuthProfilePicker from './components/Connection/AuthProfilePicker'
+import ConnectionForm from './components/Connection/ConnectionForm'
 
-import { profileApi } from './api'
+import { profileApi, connectionApi } from './api'
 import { toApiPayload, toUiPayload } from './payloadMapper'
 
 function App() {
@@ -18,8 +20,12 @@ function App() {
   const [editing, setEditing]     = useState(null)
   const [error, setError]         = useState('')
 
-  /* Which sidebar item is active: 'auth_profile' | 'connection' */
+ 
   const [activeView, setActiveView] = useState('auth_profile')
+
+
+  const [connectionStep, setConnectionStep]       = useState(null)
+  const [selectedAuthProfile, setSelectedAuthProfile] = useState(null)
 
   const reload = useCallback(async () => {
     try {
@@ -33,7 +39,15 @@ function App() {
 
   useEffect(() => { reload() }, [reload])
 
-  const openCreate = () => { setEditing(null); setPanelOpen(true) }
+  const openCreate = () => {
+    if (activeView === 'connection') {
+    
+      setConnectionStep('pick')
+      return
+    }
+    setEditing(null)
+    setPanelOpen(true)
+  }
 
   const openEdit = async (p) => {
     try {
@@ -72,23 +86,56 @@ function App() {
     }
   }
 
-  /* Connection-specific actions */
-  const handleShare = (p) => {
-    alert(`Share: ${p.name}`)
-  }
-  const handleTest = (p) => {
-    alert(`Test connection: ${p.name}`)
-  }
-  const handleReconnect = (p) => {
-    openEdit(p)
+
+  const closeConnectionFlow = () => {
+    setConnectionStep(null)
+    setSelectedAuthProfile(null)
   }
 
-  /* Handle sidebar switch.
-     Only two views are currently implemented: 'auth_profile' and 'connection'.
-     Any other values are ignored (stay on current view). */
+  const handlePickNext = async (profile) => {
+
+    try {
+      const fresh = await profileApi.get(profile.id)
+      setSelectedAuthProfile(fresh)
+      setConnectionStep('form')
+    } catch (e) {
+      alert('Could not load auth profile: ' + e.message)
+    }
+  }
+
+  const handleConnectionSave = async (payload) => {
+    // Build the final JSON body for POST /api/connection
+    const body = {
+      name:          payload.name,
+      authProfileId: payload.authProfileId,
+      fields: Object.entries(payload.values || {}).map(([key, value]) => ({
+        key,
+        value,
+      })),
+    }
+
+    try {
+      console.log('[Connection] POST /api/connection →', body)
+      const created = await connectionApi.create(body)
+      console.log('[Connection] created:', created)
+      closeConnectionFlow()
+      reload()
+    } catch (e) {
+      alert('Connection save failed: ' + e.message)
+    }
+  }
+
+  const handleShare     = (p) => { alert(`Share: ${p.name}`) }
+  const handleTest      = (p) => { alert(`Test connection: ${p.name}`) }
+  const handleReconnect = (p) => { openEdit(p) }
+
+ 
   const handleSelectView = (value) => {
     if (value === 'auth_profile' || value === 'connection') {
       setActiveView(value)
+     
+      closePanel()
+      closeConnectionFlow()
     }
   }
 
@@ -126,6 +173,42 @@ function App() {
               initial={editing}
               onSave={handleSave}
               onCancel={closePanel}
+            />
+          </Panel>
+        </div>
+      )}
+
+      
+      {connectionStep === 'pick' && (
+        <div className="first_layer">
+          <div className="panel-tint" />
+          <AuthProfilePicker
+            profiles={profiles}
+            onCancel={closeConnectionFlow}
+            onNext={handlePickNext}
+          />
+        </div>
+      )}
+
+      
+      {connectionStep === 'form' && selectedAuthProfile && (
+        <div className="first_layer">
+          <div className="panel-tint" />
+          <Panel
+            title="Create Connection"
+            subtitle={`Using "${selectedAuthProfile.name}" auth profile`}
+            description={{
+              title: 'Connection',
+              text:
+                "Fill in the credentials below. These values are stored securely " +
+                "and used whenever this connection sends a request to the target app.",
+            }}
+            onClose={closeConnectionFlow}
+          >
+            <ConnectionForm
+              profile={selectedAuthProfile}
+              onSave={handleConnectionSave}
+              onCancel={closeConnectionFlow}
             />
           </Panel>
         </div>
