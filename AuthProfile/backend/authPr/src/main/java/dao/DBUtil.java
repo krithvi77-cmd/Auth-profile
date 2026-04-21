@@ -8,7 +8,7 @@ public class DBUtil {
 
     private static final String URL      = "jdbc:mysql://localhost:3306/auth_profiles";
     private static final String USERNAME = "root";
-    private static final String PASSWORD = "Krithvi-123";
+    private static final String PASSWORD = "Krithvi@1234";
 
     static {
         try {

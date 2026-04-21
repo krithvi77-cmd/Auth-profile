@@ -34,8 +34,6 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
   const [profileName, setProfileName] = useState(initial?.name || '');
 
 
-  const [username, setUsername] = useState(pickValue(initial, 'username'));
-  const [password, setPassword] = useState(pickValue(initial, 'password'));
 
   const [v2ClientId, setV2ClientId] = useState(pickValue(initial, 'client_id'));
   const [v2ClientSecret, setV2ClientSecret] = useState(pickValue(initial, 'client_secret'));
@@ -66,10 +64,6 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
 
     if (!profileName.trim()) next.profileName = 'Auth Profile Name is required';
 
-    if (authMethod === 'basic_auth') {
-      if (!username.trim()) next.username = 'Username is required';
-      if (!password.trim()) next.password = 'Password is required';
-    }
 
     if (authMethod === 'oauth_v2') {
       if (!v2ClientId.trim()) next.v2ClientId = 'Client ID is required';
@@ -95,12 +89,7 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
 
     let fields = [];
 
-    if (authMethod === 'basic_auth') {
-      fields = [
-        { key: 'username', value: username, fieldType: 'text', isCustom: false },
-        { key: 'password', value: password, fieldType: 'password', isCustom: false },
-      ];
-    } else if (authMethod === 'oauth_v2') {
+     if (authMethod === 'oauth_v2') {
       fields = [
         {
           key: 'client_id',
@@ -162,14 +151,6 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         
         <label className="panel_radio_item">
           <input type="radio" name="auth_method" value="oauth_v2"
-            checked={authMethod === 'oauth_v1'}
-            onChange={() => { setAuthMethod('oauth_v1'); setErrors({}); }}
-          />
-          <span>OAuth</span>
-        </label>
-
-        <label className="panel_radio_item">
-          <input type="radio" name="auth_method" value="oauth_v2"
             checked={authMethod === 'oauth_v2'}
             onChange={() => { setAuthMethod('oauth_v2'); setErrors({}); }}
           />
@@ -203,12 +184,6 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
         />
         {errors.profileName && <span className="panel_error_tooltip">{errors.profileName}</span>}
       </div>
-
-      {}
-      {authMethod === 'basic_auth' && (
-        <>
-        </>
-      )}
 
       { }
       {authMethod === 'oauth_v2' && (
