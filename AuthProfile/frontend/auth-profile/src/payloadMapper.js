@@ -1,7 +1,34 @@
 
+const BASIC_AUTH = 1;
 
 export function toApiPayload(ui) {
-  const fields = (ui.fields || []).map((f, i) => {
+  const sourceFields = [...(ui.fields || [])];
+
+  if (ui.auth_type === BASIC_AUTH) {
+    const hasKey = (k) => sourceFields.some(
+      f => (f.key || '').toLowerCase() === k
+    );
+    if (!hasKey('username')) {
+      sourceFields.push({
+        key: 'username',
+        label: 'Username',
+        fieldType: 'text',
+        value: '',
+        isCustom: false,
+      });
+    }
+    if (!hasKey('password')) {
+      sourceFields.push({
+        key: 'password',
+        label: 'Password',
+        fieldType: 'password',
+        value: '',
+        isCustom: false,
+      });
+    }
+  }
+
+  const fields = sourceFields.map((f, i) => {
     const out = {
       key:          f.key,
       fieldType:    f.fieldType || 'text',

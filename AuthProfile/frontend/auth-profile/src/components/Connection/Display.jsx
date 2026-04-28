@@ -1,7 +1,7 @@
 import Card from './Card';
 import './Display.css';
 
-function Display({ profiles = [], onEdit, onShare, onTest, onReconnect }) {
+function Display({ connections = [], onEdit, onDelete, onShare, onTest, onReconnect }) {
   return (
     <div className="connection-display">
       <div className="connection-display-header">
@@ -11,21 +11,23 @@ function Display({ profiles = [], onEdit, onShare, onTest, onReconnect }) {
         <span>Actions</span>
       </div>
       <div className="connection-display-body">
-        {profiles.length === 0 && (
+        {connections.length === 0 && (
           <div className="connection-display-empty">
             No connections yet. Click <b>Create Connection</b> to add one.
           </div>
         )}
-        {profiles.map(p => (
+        {connections.map(p => (
           <Card
             key={p.id}
             name={p.name}
-            createdBy={p.createdBy ?? '—'}
+            profileName={p.profileName}
+            createdBy={p.createdBy ?? p.userId ?? '—'}
             lastUpdated={(p.createdAt || '').split(' ')[0] || '—'}
             onShare={() => onShare && onShare(p)}
             onTest={() => onTest && onTest(p)}
             onReconnect={() => onReconnect && onReconnect(p)}
             onEdit={() => onEdit && onEdit(p)}
+            onDelete={() => onDelete && onDelete(p)}
           />
         ))}
       </div>

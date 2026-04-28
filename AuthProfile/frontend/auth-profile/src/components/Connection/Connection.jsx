@@ -2,7 +2,8 @@ import './Connection.css';
 import Button from '../Common/Button';
 import Display from './Display';
 
-function Connection({ profiles = [], error = '', onCreate, onEdit, onDelete, onShare, onTest, onReconnect }) {
+
+function Connection({ connections = [], error = '', onCreate, onEdit, onDelete, onShare, onTest, onReconnect }) {
   return (
     <div className="connection">
       <div className="connection-header">
@@ -22,7 +23,7 @@ function Connection({ profiles = [], error = '', onCreate, onEdit, onDelete, onS
       {error && <div className="connection-error">Error: {error}</div>}
 
       <Display
-        profiles={profiles}
+        connections={connections}
         onEdit={onEdit}
         onDelete={onDelete}
         onShare={onShare}

@@ -26,7 +26,7 @@ function Display({ profiles = [], onEdit, onDelete }) {
             lastUpdated={(p.createdAt || '').split(' ')[0] || '—'}
             action="Edit"
             onEdit={() => onEdit && onEdit(p)}
-            onDelete={() => onDelete && onDelete(p.id)}
+            onDelete={() => onDelete && onDelete(p)}
           />
         ))}
       </div>

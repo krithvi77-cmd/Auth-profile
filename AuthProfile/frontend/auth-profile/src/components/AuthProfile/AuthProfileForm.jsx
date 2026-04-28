@@ -5,11 +5,28 @@ import Button from '../Common/Button';
 
 const AUTH_ID_TO_METHOD = { 1: 'basic_auth', 2: 'oauth_v2', 3: 'api_key' };
 
+// Server-side mask returned for password-typed defaults on profile reads.
+// Must match dao.ProfileDAO.MASK_SENTINEL. Treat as "value already set,
+// keep what's stored" — never echo it back, never store it locally.
+const SECRET_MASK = '********';
 
 function pickValue(initial, key, fallback = '') {
   if (!initial || !Array.isArray(initial.fields)) return fallback;
   const f = initial.fields.find(x => x.key === key && !x.isCustom);
-  return f ? (f.value ?? fallback) : fallback;
+  if (!f) return fallback;
+  const raw = f.value ?? fallback;
+  // For password fields the server may have masked the real value. Surface
+  // an empty input to the admin instead of pre-filling dots — empty on
+  // submit means "keep existing" on the server side.
+  if (f.fieldType === 'password' && raw === SECRET_MASK) return '';
+  return raw;
+}
+
+function hasStoredSecret(initial, key) {
+  if (!initial || !Array.isArray(initial.fields)) return false;
+  const f = initial.fields.find(x => x.key === key && !x.isCustom);
+  if (!f) return false;
+  return f.fieldType === 'password' && f.value === SECRET_MASK;
 }
 
 
@@ -37,6 +54,9 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
 
   const [v2ClientId, setV2ClientId] = useState(pickValue(initial, 'client_id'));
   const [v2ClientSecret, setV2ClientSecret] = useState(pickValue(initial, 'client_secret'));
+  // True when editing a profile whose client_secret is already stored.
+  // Shown as a hint and also relaxes the "required" check on edit.
+  const secretStored = hasStoredSecret(initial, 'client_secret');
   const [v2AuthUrl, setV2AuthUrl] = useState(pickValue(initial, 'authorization_url'));
   const [v2AccessUrl, setV2AccessUrl] = useState(pickValue(initial, 'access_token_url'));
   const [v2Scopes, setV2Scopes] = useState(pickValue(initial, 'scopes'));
@@ -67,7 +87,11 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
 
     if (authMethod === 'oauth_v2') {
       if (!v2ClientId.trim()) next.v2ClientId = 'Client ID is required';
-      if (!v2ClientSecret.trim()) next.v2ClientSecret = 'Client Secret is required';
+      // On edit, an empty Client Secret means "keep the stored value" — the
+      // server merges it correctly. Only enforce required-ness on create.
+      if (!v2ClientSecret.trim() && !secretStored) {
+        next.v2ClientSecret = 'Client Secret is required';
+      }
       if (!v2AuthUrl.trim()) next.v2AuthUrl = 'Authorization URL is required';
       if (!v2AccessUrl.trim()) next.v2AccessUrl = 'Access Token URL is required';
       if (!v2Placement.trim()) next.v2Placement = 'Access Token Placement is required';
@@ -89,7 +113,24 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
 
     let fields = [];
 
-     if (authMethod === 'oauth_v2') {
+    if (authMethod === 'basic_auth') {
+      fields = [
+        {
+          key: 'username',
+          value: '',
+          fieldType: 'text',
+          isCustom: false,
+          label: 'Username',
+        },
+        {
+          key: 'password',
+          value: '',
+          fieldType: 'password',
+          isCustom: false,
+          label: 'Password',
+        },
+      ];
+    } else if (authMethod === 'oauth_v2') {
       fields = [
         {
           key: 'client_id',
@@ -208,9 +249,16 @@ function AuthProfileForm({ onSave, onCancel, initial = null }) {
             <label className="panel_field_label">
               Client Secret<span className="panel_required">*</span>
             </label>
+            {secretStored && (
+              <p className="panel_field_desc">
+                A secret is already saved. Leave this empty to keep it, or
+                type a new value to replace it.
+              </p>
+            )}
             <input type="password"
               className={errors.v2ClientSecret ? 'panel_input panel_input_error' : 'panel_input'}
               value={v2ClientSecret}
+              placeholder={secretStored ? '••••••••' : ''}
               onChange={(e) => { setV2ClientSecret(e.target.value); clearError('v2ClientSecret'); }}
             />
             {errors.v2ClientSecret && <span className="panel_error_tooltip">{errors.v2ClientSecret}</span>}

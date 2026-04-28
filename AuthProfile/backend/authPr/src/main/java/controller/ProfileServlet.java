@@ -55,6 +55,8 @@ public class ProfileServlet extends HttpServlet {
 			int id = dao.create(profile);
 			AuthProfile saved = dao.getById(id);
 			writeJson(res, 201, saved);
+		} catch (IllegalArgumentException bad) {
+			writeError(res, 400, bad.getMessage());
 		} catch (Exception e) {
 			e.printStackTrace();
 			writeError(res, 500, e.getMessage());
@@ -86,6 +88,9 @@ public class ProfileServlet extends HttpServlet {
 			}
 
 			writeJson(res, 200, dao.getById(id));
+		} catch (IllegalArgumentException bad) {
+			// Invariant violations (auth_type change, field-set edit, etc.)
+			writeError(res, 400, bad.getMessage());
 		} catch (Exception e) {
 			e.printStackTrace();
 			writeError(res, 500, e.getMessage());
@@ -100,8 +105,7 @@ public class ProfileServlet extends HttpServlet {
 				writeError(res, 400, "Missing id in URL");
 				return;
 			}
-
-			boolean ok = dao.delete(id);
+			boolean ok = dao.hardDelete(id);
 			if (!ok) {
 				writeError(res, 404, "Profile not found");
 				return;

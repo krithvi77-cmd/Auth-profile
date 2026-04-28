@@ -1,6 +1,6 @@
 import './Card.css';
 
-function Card({ name, createdBy, lastUpdated, onShare, onTest, onReconnect }) {
+function Card({ name, createdBy, lastUpdated, onShare, onTest, onReconnect, onDelete }) {
   const colors = ["#303F51", "#2B4937", "#504539", "#314649", "#3F384C"];
   const idx = (name || '').charCodeAt(0) % colors.length;
   const bg = colors[isNaN(idx) ? 0 : idx];
@@ -25,6 +25,17 @@ function Card({ name, createdBy, lastUpdated, onShare, onTest, onReconnect }) {
         <span className="connection-link-btn" onClick={onTest}>Test</span>
         <span className="connection-link-sep">|</span>
         <span className="connection-link-btn" onClick={onReconnect || onShare}>Reconnect</span>
+        {onDelete && (
+          <>
+            <span className="connection-link-sep">|</span>
+            <i
+              className="bi bi-trash delete-icon"
+              title="Delete connection"
+              onClick={onDelete}
+              style={{ cursor: 'pointer' }}
+            ></i>
+          </>
+        )}
       </div>
     </div>
   );
