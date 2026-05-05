@@ -3,7 +3,7 @@ import Button from '../Common/Button';
 import Display from './Display';
 
 
-function Connection({ connections = [], error = '', onCreate, onEdit, onDelete, onShare, onTest, onReconnect }) {
+function Connection({ connections = [], error = '', onCreate, onEdit, onDelete, onClone, onTest, onReconnect, onCheck }) {
   return (
     <div className="connection">
       <div className="connection-header">
@@ -26,9 +26,10 @@ function Connection({ connections = [], error = '', onCreate, onEdit, onDelete, 
         connections={connections}
         onEdit={onEdit}
         onDelete={onDelete}
-        onShare={onShare}
+        onClone={onClone}
         onTest={onTest}
         onReconnect={onReconnect}
+        onCheck={onCheck}
       />
     </div>
   );

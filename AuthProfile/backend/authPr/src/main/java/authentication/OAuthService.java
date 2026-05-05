@@ -73,21 +73,56 @@ public class OAuthService {
             return false;
         }
         if (stored.expiresAt == null) {
-
             return true;
         }
         return stored.expiresAt.isAfter(Instant.now());
     }
 
-   
+    public static class CheckInfo {
+        public boolean hasToken;
+        public String  expiresAt;
+        public Long    expiresInMs;
+        public boolean isExpired;
+        public boolean isNearExpiry;
+        public boolean refreshable;
+    }
+
+    public CheckInfo getCheckInfo(int connectionId, long nearExpiryMs) throws SQLException {
+        CheckInfo info = new CheckInfo();
+        StoredOauth stored = loadOauthRow(connectionId);
+        if (stored == null || stored.accessToken == null || stored.accessToken.isEmpty()) {
+            info.hasToken = false;
+            info.isExpired = true;
+            info.isNearExpiry = true;
+            info.refreshable = false;
+            return info;
+        }
+        info.hasToken = true;
+        info.refreshable = stored.refreshToken != null && !stored.refreshToken.isEmpty();
+        if (stored.expiresAt == null) {
+            info.expiresAt = null;
+            info.expiresInMs = null;
+            info.isExpired = false;
+            info.isNearExpiry = false;
+            return info;
+        }
+        info.expiresAt = stored.expiresAt.toString();
+        long diff = stored.expiresAt.toEpochMilli() - Instant.now().toEpochMilli();
+        info.expiresInMs = diff;
+        info.isExpired = diff <= 0;
+        info.isNearExpiry = diff <= nearExpiryMs;
+        return info;
+    }
+
     public ReconnectOutcome reconnect(int connectionId)
             throws SQLException, IOException, InterruptedException {
+
+        boolean valid =  isStillValid(connectionId);
 
         StoredOauth stored = loadOauthRow(connectionId);
         if (stored == null) {
             return ReconnectOutcome.NEEDS_AUTHORIZE;
         }
-
 
         if (stored.expiresAt == null) {
             return ReconnectOutcome.STILL_VALID;
@@ -140,7 +175,7 @@ public class OAuthService {
         String redirectUri = pending.redirectUri != null ? pending.redirectUri : autoRedirectUri;
 
         int profileId = lookupProfileId(connectionId);
-  
+
         AuthProfile profile = profileDAO.getByIdUnmasked(profileId);
         if (profile == null) {
             throw new IllegalStateException("Profile " + profileId + " not found for connection " + connectionId);
@@ -150,7 +185,6 @@ public class OAuthService {
         String tokenUrl     = cfg.get(Oauthv2Authenticator.F_ACCESS_TOKEN_URL);
         String clientId     = cfg.get(Oauthv2Authenticator.F_CLIENT_ID);
         String clientSecret = cfg.get(Oauthv2Authenticator.F_CLIENT_SECRET);
-
 
         JsonNode tokenJson = exchangeCode(tokenUrl, code, redirectUri, clientId, clientSecret);
 
@@ -230,7 +264,7 @@ public class OAuthService {
         try (java.sql.Connection jdbc = DBUtil.getConnection()) {
             jdbc.setAutoCommit(false);
             try {
-                upsertOauth(jdbc, connectionId, accessToken, refreshToken, expiresAtIso);
+                updateOauthTokens(jdbc, connectionId, accessToken, refreshToken, expiresAtIso);
                 markConnectionActive(jdbc, connectionId);
                 jdbc.commit();
             } catch (SQLException ex) {
@@ -242,7 +276,6 @@ public class OAuthService {
         }
     }
 
- 
     private void saveRefreshedTokens(int connectionId, String accessToken,
             String refreshToken, String expiresAtIso) throws SQLException {
         try (java.sql.Connection jdbc = DBUtil.getConnection()) {
@@ -268,34 +301,6 @@ public class OAuthService {
         }
     }
 
-    private void upsertOauth(java.sql.Connection jdbc, int connectionId, String accessToken,
-            String refreshToken, String expiresAtIso) throws SQLException {
-        String sql = "INSERT INTO connection_oauth_values "
-                + "(connection_id, access_token, refresh_token, expires_at) "
-                + "VALUES (?, ?, ?, ?) "
-                + "ON DUPLICATE KEY UPDATE "
-                + "access_token = VALUES(access_token), "
-                + "refresh_token = COALESCE(VALUES(refresh_token), refresh_token), "
-                + "expires_at = VALUES(expires_at)";
-
-        try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
-            ps.setInt(1, connectionId);
-            ps.setString(2, accessToken);
-            if (refreshToken != null) {
-                ps.setString(3, refreshToken);
-            } else {
-                ps.setNull(3, Types.LONGVARCHAR);
-            }
-            if (expiresAtIso != null) {
-                ps.setTimestamp(4, Timestamp.from(Instant.parse(expiresAtIso)));
-            } else {
-                ps.setNull(4, Types.TIMESTAMP);
-            }
-            ps.executeUpdate();
-        }
-    }
-
-
     private void updateOauthTokens(java.sql.Connection jdbc, int connectionId, String accessToken,
             String refreshToken, String expiresAtIso) throws SQLException {
         String sql = "UPDATE connection_oauth_values SET "
@@ -319,7 +324,6 @@ public class OAuthService {
             ps.setInt(4, connectionId);
             int rows = ps.executeUpdate();
             if (rows == 0) {
-  
                 throw new SQLException(
                         "updateOauthTokens affected 0 rows for connection_id=" + connectionId
                                 + " — row missing or connection_id mismatch");
@@ -363,7 +367,6 @@ public class OAuthService {
         }
     }
 
- 
     private static final class StoredOauth {
         final String accessToken;
         final String refreshToken;
@@ -376,9 +379,70 @@ public class OAuthService {
         }
     }
 
-
     private static final class RefreshRejectedException extends RuntimeException {
         RefreshRejectedException(String msg) { super(msg); }
+    }
+
+    public boolean revokeToken(int connectionId) {
+        try {
+            StoredOauth stored = loadOauthRow(connectionId);
+            if (stored == null) {
+                return false;
+            }
+            String token = (stored.refreshToken != null && !stored.refreshToken.isEmpty())
+                    ? stored.refreshToken
+                    : stored.accessToken;
+            if (token == null || token.isEmpty()) {
+                return false;
+            }
+
+            int profileId = lookupProfileId(connectionId);
+            AuthProfile profile = profileDAO.getByIdUnmasked(profileId);
+            if (profile == null) {
+                return false;
+            }
+            Map<String, String> cfg = Oauthv2Authenticator.profileFieldValues(profile);
+            String tokenUrl = cfg.get(Oauthv2Authenticator.F_ACCESS_TOKEN_URL);
+            String revokeUrl = deriveRevokeUrl(tokenUrl);
+            if (revokeUrl == null) {
+                return false;
+            }
+
+            Map<String, String> form = new HashMap<>();
+            form.put("token", token);
+            String clientId = cfg.get(Oauthv2Authenticator.F_CLIENT_ID);
+            String clientSecret = cfg.get(Oauthv2Authenticator.F_CLIENT_SECRET);
+            if (clientId != null && !clientId.isEmpty()) form.put("client_id", clientId);
+            if (clientSecret != null && !clientSecret.isEmpty()) form.put("client_secret", clientSecret);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(revokeUrl))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(urlEncode(form)))
+                    .build();
+
+            HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+            int sc = response.statusCode();
+            return sc / 100 == 2;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private String deriveRevokeUrl(String tokenUrl) {
+        if (tokenUrl == null || tokenUrl.isEmpty()) {
+            return null;
+        }
+        String lower = tokenUrl.toLowerCase();
+        if (lower.endsWith("/token")) {
+            return tokenUrl.substring(0, tokenUrl.length() - "/token".length()) + "/revoke";
+        }
+        if (lower.contains("/oauth/token")) {
+            return tokenUrl.replace("/oauth/token", "/oauth/revoke");
+        }
+        return null;
     }
 
     private StoredOauth loadOauthRow(int connectionId) throws SQLException {
@@ -397,7 +461,6 @@ public class OAuthService {
             }
         }
     }
-
 
     private JsonNode exchangeRefreshToken(String tokenUrl, String refreshToken,
             String clientId, String clientSecret)

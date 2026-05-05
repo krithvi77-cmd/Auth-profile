@@ -10,7 +10,6 @@ import java.util.Map;
 
 public class ProfileDAO {
 
-
 	public static final String MASK_SENTINEL = "********";
 
 	public List<AuthProfile> getAll() throws SQLException {
@@ -47,7 +46,7 @@ public class ProfileDAO {
 	}
 
 	private List<Field> getFieldsForProfile(int profileId) throws SQLException {
-		return getFieldsForProfile(profileId,  true);
+		return getFieldsForProfile(profileId, true);
 	}
 
 	private List<Field> getFieldsForProfile(int profileId, boolean maskSecrets) throws SQLException {
@@ -67,7 +66,6 @@ public class ProfileDAO {
 		}
 		return fields;
 	}
-
 
 	public AuthProfile getByIdUnmasked(int id) throws SQLException {
 		String sql = "SELECT id, name, auth_type, version, created_by, is_active, created_at "
@@ -122,7 +120,6 @@ public class ProfileDAO {
 		}
 	}
 
-	
 	public boolean update(AuthProfile profile) throws SQLException {
 		if (profile == null || profile.getId() <= 0) {
 			throw new IllegalArgumentException("profile id is required for update");
@@ -131,7 +128,6 @@ public class ProfileDAO {
 		try (Connection con = DBUtil.getConnection()) {
 			con.setAutoCommit(false);
 			try {
-				
 				AuthProfile stored = getByIdUnmaskedNoTx(con, profile.getId());
 				if (stored == null) {
 					con.rollback();
@@ -145,9 +141,7 @@ public class ProfileDAO {
 									+ "). Create a new profile instead.");
 				}
 
-				
 				assertFieldSetUnchanged(stored.getFields(), profile.getFields());
-
 
 				int rows;
 				try (PreparedStatement ps = con.prepareStatement(
@@ -161,7 +155,6 @@ public class ProfileDAO {
 					return false;
 				}
 
-		
 				updateFieldsInPlace(con, stored, profile.getFields());
 
 				con.commit();
@@ -201,7 +194,6 @@ public class ProfileDAO {
 	}
 
 	private void assertFieldSetUnchanged(List<Field> stored, List<Field> incoming) {
-		
 		if (incoming == null || incoming.isEmpty()) return;
 
 		Map<String, Field> storedByKey = new HashMap<>();
@@ -219,7 +211,6 @@ public class ProfileDAO {
 			}
 			incomingByKey.put(k, f);
 		}
-
 
 		for (String k : incomingByKey.keySet()) {
 			if (!storedByKey.containsKey(k)) {
@@ -271,7 +262,6 @@ public class ProfileDAO {
 					ps.setNull(1, Types.VARCHAR);
 				}
 
-				
 				String resolved = resolveDefaultValueForUpdate(stRow, in);
 				if (resolved != null) ps.setString(2, resolved);
 				else                  ps.setNull(2, Types.VARCHAR);
@@ -290,7 +280,6 @@ public class ProfileDAO {
 			ps.executeBatch();
 		}
 	}
-
 
 	private String resolveDefaultValueForUpdate(Field stored, Field incoming) {
 		String incomingVal = incoming.getDefaultValue();

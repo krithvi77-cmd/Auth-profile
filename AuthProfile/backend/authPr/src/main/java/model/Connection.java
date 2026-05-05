@@ -10,6 +10,9 @@ import java.util.Map;
 
 public class Connection {
 
+	public static final String VALUE_TYPE_VALUES = "VALUES";
+	public static final String VALUE_TYPE_OAUTH  = "OAUTH";
+
 	private int id;
 
 	@JsonProperty("authProfileId")
@@ -24,10 +27,19 @@ public class Connection {
 
 	private List<ConnectionValue> fields = new ArrayList<>();
 
+	@JsonProperty("valueType")
+	@JsonAlias({ "value_type" })
+	private String valueType;
+
+	@JsonProperty("valueId")
+	@JsonAlias({ "value_id" })
+	private Integer valueId;
+
+	@JsonIgnore
+	private ConnectionOauth oauthData;
 
 	public Connection() {
 	}
-
 
 	@JsonProperty("values")
 	public void setValues(Map<String, String> values) {
@@ -119,4 +131,43 @@ public class Connection {
 		}
 	}
 
+	public String getValueType() {
+		return valueType;
+	}
+
+	public void setValueType(String valueType) {
+		this.valueType = valueType;
+	}
+
+	public Integer getValueId() {
+		return valueId;
+	}
+
+	public void setValueId(Integer valueId) {
+		this.valueId = valueId;
+	}
+
+	public ConnectionOauth getOauthData() {
+		return oauthData;
+	}
+
+	public void setOauthData(ConnectionOauth oauthData) {
+		this.oauthData = oauthData;
+	}
+
+	@JsonProperty("connectionType")
+	public String getConnectionType() {
+		if (valueType == null) return null;
+		return valueType.toLowerCase();
+	}
+
+	@JsonIgnore
+	public boolean isValuesType() {
+		return VALUE_TYPE_VALUES.equalsIgnoreCase(valueType);
+	}
+
+	@JsonIgnore
+	public boolean isOauthType() {
+		return VALUE_TYPE_OAUTH.equalsIgnoreCase(valueType);
+	}
 }

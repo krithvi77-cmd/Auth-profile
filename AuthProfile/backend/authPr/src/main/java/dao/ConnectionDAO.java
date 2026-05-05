@@ -4,20 +4,22 @@ import authentication.AuthenticationHandler;
 import authentication.Authenticator;
 import model.AuthProfile;
 import model.Connection;
+import model.ConnectionOauth;
+import model.ConnectionValue;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Map;
 
 public class ConnectionDAO {
 
 	public int create(AuthProfile profile, Connection conn) throws SQLException {
 		Authenticator authenticator = AuthenticationHandler.forAuthType(profile.getAuthType());
-
 		if (authenticator == null) {
 			throw new IllegalArgumentException(
 					"No authenticator registered for auth_type=" + profile.getAuthType());
@@ -64,12 +66,9 @@ public class ConnectionDAO {
 		try (java.sql.Connection jdbc = DBUtil.getConnection()) {
 			jdbc.setAutoCommit(false);
 			try {
-				
 				assertProfileUnchanged(jdbc, conn.getId(), profile.getId());
-
 				updateConnectionRow(jdbc, profile, conn);
 				updateCredentials(jdbc, profile, conn);
-
 				jdbc.commit();
 				conn.setProfileId(profile.getId());
 			} catch (SQLException ex) {
@@ -80,7 +79,6 @@ public class ConnectionDAO {
 			}
 		}
 	}
-
 
 	private void assertProfileUnchanged(java.sql.Connection jdbc, int connectionId, int newProfileId)
 			throws SQLException {
@@ -121,11 +119,10 @@ public class ConnectionDAO {
 		conn.setStatus(newStatus);
 	}
 
-
 	private void updateCredentials(java.sql.Connection jdbc, AuthProfile profile, Connection conn)
 			throws SQLException {
 		int authType = profile.getAuthType();
-		java.util.Map<String, String> supplied = authentication.AuthUtil.toMap(conn);
+		Map<String, String> supplied = authentication.AuthUtil.toMap(conn);
 		int connectionId = conn.getId();
 
 		if (authType == authentication.BasicAuthenticator.AUTH_TYPE) {
@@ -163,15 +160,14 @@ public class ConnectionDAO {
 		}
 	}
 
-
 	private void updateValue(java.sql.Connection jdbc, int connectionId, int fieldId,
 			String key, String value) throws SQLException {
 		String sql = "UPDATE connection_values SET `key` = ?, value = ? "
 				+ "WHERE connection_id = ? AND field_id = ?";
 		int affected;
 		try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
-			if (key != null) ps.setString(1, key); else ps.setNull(1, java.sql.Types.VARCHAR);
-			if (value != null) ps.setString(2, value); else ps.setNull(2, java.sql.Types.VARCHAR);
+			if (key != null) ps.setString(1, key); else ps.setNull(1, Types.VARCHAR);
+			if (value != null) ps.setString(2, value); else ps.setNull(2, Types.VARCHAR);
 			ps.setInt(3, connectionId);
 			ps.setInt(4, fieldId);
 			affected = ps.executeUpdate();
@@ -181,14 +177,38 @@ public class ConnectionDAO {
 		}
 	}
 
+	public static void linkValues(java.sql.Connection jdbc, int connectionId, int connectionValuesRowId)
+			throws SQLException {
+		linkValueRef(jdbc, connectionId, Connection.VALUE_TYPE_VALUES, connectionValuesRowId);
+	}
+
+	public static void linkOauth(java.sql.Connection jdbc, int connectionId, int connectionOauthRowId)
+			throws SQLException {
+		linkValueRef(jdbc, connectionId, Connection.VALUE_TYPE_OAUTH, connectionOauthRowId);
+	}
+
+	private static void linkValueRef(java.sql.Connection jdbc, int connectionId,
+			String valueType, int valueId) throws SQLException {
+		String sql = "UPDATE connections SET value_type = ?, value_id = ? WHERE id = ?";
+		try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
+			ps.setString(1, valueType);
+			ps.setInt(2, valueId);
+			ps.setInt(3, connectionId);
+			int rows = ps.executeUpdate();
+			if (rows == 0) {
+				throw new SQLException("Connection " + connectionId + " not found when linking value reference");
+			}
+		}
+	}
 
 	public List<Connection> list() throws SQLException {
 		String sql =
-				"SELECT c.id, c.profile_id, c.user_id, c.name, c.status, c.created_at, " +
-				"       p.name AS profile_name, p.auth_type " +
-				"FROM connections c " +
-				"LEFT JOIN profiles p ON p.id = c.profile_id " +
-				"ORDER BY c.created_at DESC";
+				"SELECT c.id, c.profile_id, c.user_id, c.name, c.status, c.created_at, "
+				+ "     c.value_type, c.value_id, "
+				+ "     p.name AS profile_name, p.auth_type "
+				+ "FROM connections c "
+				+ "LEFT JOIN profiles p ON p.id = c.profile_id "
+				+ "ORDER BY c.created_at DESC";
 
 		List<Connection> list = new ArrayList<>();
 		try (java.sql.Connection jdbc = DBUtil.getConnection();
@@ -201,14 +221,42 @@ public class ConnectionDAO {
 		return list;
 	}
 
-
 	public Connection getById(int id) throws SQLException {
 		String sql =
-				"SELECT c.id, c.profile_id, c.user_id, c.name, c.status, c.created_at, " +
-				"       p.name AS profile_name, p.auth_type " +
-				"FROM connections c " +
-				"LEFT JOIN profiles p ON p.id = c.profile_id " +
-				"WHERE c.id = ?";
+				"SELECT c.id, c.profile_id, c.user_id, c.name, c.status, c.created_at, "
+				+ "     c.value_type, c.value_id, "
+				+ "     p.name AS profile_name, p.auth_type "
+				+ "FROM connections c "
+				+ "LEFT JOIN profiles p ON p.id = c.profile_id "
+				+ "WHERE c.id = ?";
+
+		Connection conn;
+		try (java.sql.Connection jdbc = DBUtil.getConnection();
+				PreparedStatement ps = jdbc.prepareStatement(sql)) {
+			ps.setInt(1, id);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (!rs.next()) return null;
+				conn = mapRow(rs);
+			}
+		}
+
+		if (conn.isValuesType()) {
+			conn.setFields(loadValuesByConnectionId(conn.getId()));
+		} else if (conn.isOauthType()) {
+			conn.setOauthData(loadOauthByConnectionId(conn.getId()));
+		}
+
+		return conn;
+	}
+
+	public Connection getByIdShallow(int id) throws SQLException {
+		String sql =
+				"SELECT c.id, c.profile_id, c.user_id, c.name, c.status, c.created_at, "
+				+ "     c.value_type, c.value_id, "
+				+ "     p.name AS profile_name, p.auth_type "
+				+ "FROM connections c "
+				+ "LEFT JOIN profiles p ON p.id = c.profile_id "
+				+ "WHERE c.id = ?";
 
 		try (java.sql.Connection jdbc = DBUtil.getConnection();
 				PreparedStatement ps = jdbc.prepareStatement(sql)) {
@@ -220,18 +268,56 @@ public class ConnectionDAO {
 		}
 	}
 
-
 	public boolean delete(int id) throws SQLException {
-		String sql = "DELETE FROM connections WHERE id = ?";
-		try (java.sql.Connection jdbc = DBUtil.getConnection();
-				PreparedStatement ps = jdbc.prepareStatement(sql)) {
-			ps.setInt(1, id);
-			return ps.executeUpdate() > 0;
+		try (java.sql.Connection jdbc = DBUtil.getConnection()) {
+			jdbc.setAutoCommit(false);
+			try {
+				String valueType = null;
+				try (PreparedStatement ps = jdbc.prepareStatement(
+						"SELECT value_type FROM connections WHERE id = ?")) {
+					ps.setInt(1, id);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (!rs.next()) {
+							jdbc.rollback();
+							return false;
+						}
+						valueType = rs.getString("value_type");
+					}
+				}
+
+				if (Connection.VALUE_TYPE_VALUES.equalsIgnoreCase(valueType)) {
+					try (PreparedStatement ps = jdbc.prepareStatement(
+							"DELETE FROM connection_values WHERE connection_id = ?")) {
+						ps.setInt(1, id);
+						ps.executeUpdate();
+					}
+				} else if (Connection.VALUE_TYPE_OAUTH.equalsIgnoreCase(valueType)) {
+					try (PreparedStatement ps = jdbc.prepareStatement(
+							"DELETE FROM connection_oauth_values WHERE connection_id = ?")) {
+						ps.setInt(1, id);
+						ps.executeUpdate();
+					}
+				}
+
+				int affected;
+				try (PreparedStatement ps = jdbc.prepareStatement(
+						"DELETE FROM connections WHERE id = ?")) {
+					ps.setInt(1, id);
+					affected = ps.executeUpdate();
+				}
+
+				jdbc.commit();
+				return affected > 0;
+			} catch (SQLException ex) {
+				jdbc.rollback();
+				throw ex;
+			} finally {
+				jdbc.setAutoCommit(true);
+			}
 		}
 	}
 
-
-	public boolean reconnect(AuthProfile profile, int connectionId, java.util.Map<String, String> newValues)
+	public boolean reconnect(AuthProfile profile, int connectionId, Map<String, String> newValues)
 			throws SQLException {
 		if (connectionId <= 0) {
 			throw new IllegalArgumentException("connectionId is required");
@@ -239,7 +325,7 @@ public class ConnectionDAO {
 		if (profile == null) {
 			throw new IllegalArgumentException("profile is required");
 		}
-		
+
 		if (profile.getAuthType() == authentication.Oauthv2Authenticator.AUTH_TYPE) {
 			throw new IllegalArgumentException(
 					"OAuth reconnect must be performed via the authorize URL, not the values endpoint");
@@ -248,7 +334,6 @@ public class ConnectionDAO {
 		try (java.sql.Connection jdbc = DBUtil.getConnection()) {
 			jdbc.setAutoCommit(false);
 			try {
-				
 				int storedProfileId;
 				try (PreparedStatement ps = jdbc.prepareStatement(
 						"SELECT profile_id FROM connections WHERE id = ?")) {
@@ -268,12 +353,11 @@ public class ConnectionDAO {
 									+ " but caller passed " + profile.getId());
 				}
 
-			
 				if (newValues != null && !newValues.isEmpty() && profile.getFields() != null) {
-					for (java.util.Map.Entry<String, String> e : newValues.entrySet()) {
+					for (Map.Entry<String, String> e : newValues.entrySet()) {
 						if (e.getKey() == null) continue;
 						model.Field target = authentication.AuthUtil.findField(profile, e.getKey());
-						if (target == null) continue; 
+						if (target == null) continue;
 						updateValue(jdbc, connectionId, target.getId(), e.getKey(), e.getValue());
 					}
 				}
@@ -295,6 +379,47 @@ public class ConnectionDAO {
 		}
 	}
 
+	private List<ConnectionValue> loadValuesByConnectionId(int connectionId) throws SQLException {
+		String sql = "SELECT id, connection_id, field_id, `key`, value "
+				+ "FROM connection_values WHERE connection_id = ?";
+		List<ConnectionValue> list = new ArrayList<>();
+		try (java.sql.Connection jdbc = DBUtil.getConnection();
+				PreparedStatement ps = jdbc.prepareStatement(sql)) {
+			ps.setInt(1, connectionId);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					ConnectionValue v = new ConnectionValue();
+					v.setId(rs.getInt("id"));
+					v.setConnectionId(rs.getInt("connection_id"));
+					v.setFieldId(rs.getInt("field_id"));
+					v.setKey(rs.getString("key"));
+					v.setValue(rs.getString("value"));
+					list.add(v);
+				}
+			}
+		}
+		return list;
+	}
+
+	private ConnectionOauth loadOauthByConnectionId(int connectionId) throws SQLException {
+		String sql = "SELECT id, connection_id, access_token, refresh_token, expires_at "
+				+ "FROM connection_oauth_values WHERE connection_id = ?";
+		try (java.sql.Connection jdbc = DBUtil.getConnection();
+				PreparedStatement ps = jdbc.prepareStatement(sql)) {
+			ps.setInt(1, connectionId);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (!rs.next()) return null;
+				ConnectionOauth o = new ConnectionOauth();
+				o.setId(rs.getInt("id"));
+				o.setConnectionId(rs.getInt("connection_id"));
+				o.setAccessToken(rs.getString("access_token"));
+				o.setRefreshToken(rs.getString("refresh_token"));
+				Timestamp ts = rs.getTimestamp("expires_at");
+				if (ts != null) o.setExpiresAt(ts.toInstant().toString());
+				return o;
+			}
+		}
+	}
 
 	private Connection mapRow(ResultSet rs) throws SQLException {
 		Connection c = new Connection();
@@ -306,6 +431,10 @@ public class ConnectionDAO {
 
 		c.setName(rs.getString("name"));
 		c.setStatus(rs.getString("status"));
+
+		c.setValueType(rs.getString("value_type"));
+		int vid = rs.getInt("value_id");
+		c.setValueId(rs.wasNull() ? null : vid);
 
 		Timestamp ts = rs.getTimestamp("created_at");
 		if (ts != null) c.setCreatedAt(ts.toString());

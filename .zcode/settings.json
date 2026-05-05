@@ -5,6 +5,7 @@
         "AuthProfile/backend/authPr/src/test/java",
         "AuthProfile/backend/authPr/src/test/resources",
         "AuthProfile/backend/authPr/target/generated-sources/annotations",
-        "AuthProfile/backend/authPr/target/generated-test-sources/test-annotations"
+        "AuthProfile/backend/authPr/target/generated-test-sources/test-annotations",
+        "src"
     ]
 }

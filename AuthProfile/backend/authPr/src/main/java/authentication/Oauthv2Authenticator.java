@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 public class Oauthv2Authenticator implements Authenticator {
 
 	public static final int AUTH_TYPE = 2;
@@ -44,20 +43,64 @@ public class Oauthv2Authenticator implements Authenticator {
 
 	@Override
 	public int save(java.sql.Connection jdbc, AuthProfile profile, Connection conn) throws SQLException {
-		String sql = "INSERT INTO connections (profile_id, user_id, name, status) VALUES (?, ?, ?, 'inactive')";
+		int oauthRowId = insertOauthPlaceholder(jdbc);
+
+		int connectionId = insertConnection(jdbc, profile, conn, oauthRowId);
+
+		updateOauthConnectionId(jdbc, oauthRowId, connectionId);
+
+		conn.setValueType(Connection.VALUE_TYPE_OAUTH);
+		conn.setValueId(oauthRowId);
+		conn.setStatus("inactive");
+		return connectionId;
+	}
+
+	private int insertOauthPlaceholder(java.sql.Connection jdbc) throws SQLException {
+		String sql = "INSERT INTO connection_oauth_values "
+				+ "(connection_id, access_token, refresh_token, expires_at) "
+				+ "VALUES (0, NULL, NULL, NULL)";
+		try (PreparedStatement ps = jdbc.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			ps.executeUpdate();
+			try (ResultSet keys = ps.getGeneratedKeys()) {
+				if (!keys.next()) {
+					throw new SQLException("Insert connection_oauth_values failed, no id returned");
+				}
+				return keys.getInt(1);
+			}
+		}
+	}
+
+	private void updateOauthConnectionId(java.sql.Connection jdbc, int oauthRowId, int connectionId)
+			throws SQLException {
+		String sql = "UPDATE connection_oauth_values SET connection_id = ? WHERE id = ?";
+		try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
+			ps.setInt(1, connectionId);
+			ps.setInt(2, oauthRowId);
+			int rows = ps.executeUpdate();
+			if (rows == 0) {
+				throw new SQLException("connection_oauth_values row " + oauthRowId
+						+ " not found when assigning connection_id");
+			}
+		}
+	}
+
+	private int insertConnection(java.sql.Connection jdbc, AuthProfile profile, Connection conn, int oauthRowId)
+			throws SQLException {
+		String sql = "INSERT INTO connections (profile_id, user_id, name, status, value_type, value_id) "
+				+ "VALUES (?, ?, ?, 'inactive', ?, ?)";
 		try (PreparedStatement ps = jdbc.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			ps.setInt(1, profile.getId());
 			int userId = conn.getUserId() != null ? conn.getUserId()
 					: (profile.getCreatedBy() != null ? profile.getCreatedBy() : 0);
 			ps.setInt(2, userId);
 			ps.setString(3, conn.getName().trim());
+			ps.setString(4, Connection.VALUE_TYPE_OAUTH);
+			ps.setInt(5, oauthRowId);
 			ps.executeUpdate();
 
 			try (ResultSet keys = ps.getGeneratedKeys()) {
 				if (!keys.next()) throw new SQLException("Insert connections failed, no id returned");
-				int id = keys.getInt(1);
-				conn.setStatus("inactive");
-				return id;
+				return keys.getInt(1);
 			}
 		}
 	}

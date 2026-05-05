@@ -1,6 +1,6 @@
 import './Card.css';
 
-function Card({ name, createdBy, lastUpdated, onShare, onTest, onReconnect, onDelete }) {
+function Card({ name, createdBy, lastUpdated, onClone, onTest, onReconnect, onCheck, onDelete }) {
   const colors = ["#303F51", "#2B4937", "#504539", "#314649", "#3F384C"];
   const idx = (name || '').charCodeAt(0) % colors.length;
   const bg = colors[isNaN(idx) ? 0 : idx];
@@ -20,11 +20,13 @@ function Card({ name, createdBy, lastUpdated, onShare, onTest, onReconnect, onDe
       <div>{createdBy}</div>
       <div>{lastUpdated}</div>
       <div className="connection-card-action">
-        <span className="connection-link-btn" onClick={onShare}>Share</span>
+        <span className="connection-link-btn" onClick={onClone}>Clone</span>
         <span className="connection-link-sep">|</span>
         <span className="connection-link-btn" onClick={onTest}>Test</span>
         <span className="connection-link-sep">|</span>
-        <span className="connection-link-btn" onClick={onReconnect || onShare}>Reconnect</span>
+        <span className="connection-link-btn" onClick={onReconnect || onClone}>Reconnect</span>
+        <span className="connection-link-sep">|</span>
+        <span className="connection-link-btn" onClick={onCheck}>Check</span>
         {onDelete && (
           <>
             <span className="connection-link-sep">|</span>
