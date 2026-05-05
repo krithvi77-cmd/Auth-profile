@@ -6,6 +6,10 @@ import authentication.OAuthService;
 import authentication.Oauthv2Authenticator;
 import dao.ConnectionDAO;
 import dao.ProfileDAO;
+import service.ConnectionService;
+import test.ConnectionTestService;
+import test.TestRequest;
+import test.TestResult;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,6 +27,8 @@ public class ConnectionServlet extends HttpServlet {
 	private final ProfileDAO profileDAO = new ProfileDAO();
 	private final ConnectionDAO connectionDAO = new ConnectionDAO();
 	private final OAuthService oauthService = new OAuthService();
+	private final ConnectionService connectionService = new ConnectionService();
+	private final ConnectionTestService testService = new ConnectionTestService();
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse res) throws IOException {
@@ -60,6 +66,48 @@ public class ConnectionServlet extends HttpServlet {
 				statusBody.put("id", statusId);
 				statusBody.put("valid", valid);
 				writeJson(res, 200, statusBody);
+				return;
+			}
+
+			if (pathInfo.endsWith("/check")) {
+				String idPart = pathInfo.substring(1, pathInfo.length() - "/check".length());
+				Integer checkId = parseId("/" + idPart);
+				if (checkId == null) {
+					writeError(res, 400, "Invalid connection id");
+					return;
+				}
+				Connection checkConn = connectionDAO.getById(checkId);
+				if (checkConn == null) {
+					writeError(res, 404, "Connection not found: id=" + checkId);
+					return;
+				}
+				AuthProfile checkProfile = profileDAO.getByIdUnmasked(checkConn.getProfileId());
+				int authType = (checkProfile != null) ? checkProfile.getAuthType() : 0;
+
+				Map<String, Object> checkBody = new HashMap<>();
+				checkBody.put("id", checkId);
+				checkBody.put("name", checkConn.getName());
+				checkBody.put("authType", authType);
+
+				if (authType == Oauthv2Authenticator.AUTH_TYPE) {
+					long nearExpiryMs = 5L * 60L * 1000L;
+					OAuthService.CheckInfo info = oauthService.getCheckInfo(checkId, nearExpiryMs);
+					checkBody.put("hasToken", info.hasToken);
+					checkBody.put("expiresAt", info.expiresAt);
+					checkBody.put("expiresInMs", info.expiresInMs);
+					checkBody.put("isExpired", info.isExpired);
+					checkBody.put("isNearExpiry", info.isNearExpiry);
+					checkBody.put("refreshable", info.refreshable);
+					checkBody.put("nearExpiryMs", nearExpiryMs);
+				} else {
+					checkBody.put("hasToken", true);
+					checkBody.put("expiresAt", null);
+					checkBody.put("expiresInMs", null);
+					checkBody.put("isExpired", false);
+					checkBody.put("isNearExpiry", false);
+					checkBody.put("refreshable", false);
+				}
+				writeJson(res, 200, checkBody);
 				return;
 			}
 
@@ -147,11 +195,12 @@ public class ConnectionServlet extends HttpServlet {
 			return;
 		}
 		try {
-			boolean removed = connectionDAO.delete(id);
+			boolean removed = connectionService.delete(id);
 			if (!removed) {
 				writeError(res, 404, "Connection not found: id=" + id);
 				return;
 			}
+
 			res.setStatus(204);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -182,6 +231,10 @@ public class ConnectionServlet extends HttpServlet {
 			handleReconnect(req, res);
 			return;
 		}
+		if (pathInfo != null && pathInfo.endsWith("/test")) {
+			handleTest(req, res);
+			return;
+		}
 
 		try {
 			Connection conn = mapper.readValue(req.getInputStream(), Connection.class);
@@ -194,26 +247,10 @@ public class ConnectionServlet extends HttpServlet {
 				writeError(res, 400, "authProfileId is required");
 				return;
 			}
-			AuthProfile profile = profileDAO.getByIdUnmasked(conn.getProfileId());
-			if (profile == null) {
-				writeError(res, 404, "Auth profile not found: id=" + conn.getProfileId());
-				return;
-			}
 
-			int id = connectionDAO.create(profile, conn);
-
-			Map<String, Object> body = new HashMap<>();
-			body.put("id", id);
-			body.put("name", conn.getName());
-			body.put("profileId", profile.getId());
-			body.put("authType", profile.getAuthType());
-			body.put("status", conn.getStatus());
-
-			if (profile.getAuthType() == Oauthv2Authenticator.AUTH_TYPE) {
-				String redirectUri = buildRedirectUri(req);
-				String authorizeUrl = oauthService.buildAuthorizeUrl(profile, id, redirectUri);
-				body.put("authorizeUrl", authorizeUrl);
-			}
+			String redirectUri = buildRedirectUri(req);
+			Map<String, Object> body = connectionService.create(
+					conn.getProfileId(), conn, redirectUri);
 
 			writeJson(res, 201, body);
 
@@ -225,6 +262,34 @@ public class ConnectionServlet extends HttpServlet {
 		}
 	}
 
+
+	private void handleTest(HttpServletRequest req, HttpServletResponse res) throws IOException {
+		Integer id = parseId(req.getPathInfo());
+		if (id == null) {
+			writeError(res, 400, "Invalid connection id");
+			return;
+		}
+		try {
+			TestRequest body;
+			try {
+				body = mapper.readValue(req.getInputStream(), TestRequest.class);
+			} catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+				writeError(res, 400, "Invalid JSON: " + ex.getOriginalMessage());
+				return;
+			}
+			if (body == null) {
+				writeError(res, 400, "Request body is required");
+				return;
+			}
+
+			TestResult result = testService.runTest(id, body);
+			int httpStatus = result.isOk() ? 200 : (result.isNeedsReconnect() ? 401 : 200);
+			writeJson(res, httpStatus, result);
+		} catch (Exception e) {
+			e.printStackTrace();
+			writeError(res, 500, e.getMessage());
+		}
+	}
 
 	private void handleReconnect(HttpServletRequest req, HttpServletResponse res) throws IOException {
 		Integer id = parseId(req.getPathInfo());
@@ -244,36 +309,16 @@ public class ConnectionServlet extends HttpServlet {
 				return;
 			}
 
-			Map<String, Object> body = new HashMap<>();
-			body.put("id", id);
-			body.put("name", existing.getName());
-			body.put("profileId", profile.getId());
-			body.put("authType", profile.getAuthType());
+			Map<String, Object> body;
 
 			if (profile.getAuthType() == Oauthv2Authenticator.AUTH_TYPE) {
-				OAuthService.ReconnectOutcome outcome = oauthService.reconnect(id);
-				switch (outcome) {
-					case STILL_VALID:
-					case REFRESHED:
-						body.put("status", "active");
-						body.put("refreshed", outcome == OAuthService.ReconnectOutcome.REFRESHED);
-						writeJson(res, 200, body);
-						return;
-					case NEEDS_AUTHORIZE:
-					default:
-						String redirectUri = buildRedirectUri(req);
-						String authorizeUrl = oauthService.buildAuthorizeUrl(profile, id, redirectUri);
-						body.put("status", "inactive");
-						body.put("authorizeUrl", authorizeUrl);
-						writeJson(res, 200, body);
-						return;
-				}
+				String redirectUri = buildRedirectUri(req);
+				body = connectionService.reconnectOAuth(id, redirectUri);
+			} else {
+				Map<String, String> values = readReconnectValues(req);
+				body = connectionService.reconnectWithValues(id, values);
 			}
 
-			Map<String, String> values = readReconnectValues(req);
-			connectionDAO.reconnect(profile, id, values);
-
-			body.put("status", "active");
 			writeJson(res, 200, body);
 
 		} catch (IllegalArgumentException bad) {

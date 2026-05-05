@@ -28,11 +28,14 @@ export const connectionApi = {
   create: (conn)      => request('/api/connection',       { method: 'POST',   body: JSON.stringify(conn) }),
   update: (id, data)  => request(`/api/connection/${id}`, { method: 'PUT',    body: JSON.stringify(data) }),
   remove: (id)        => request(`/api/connection/${id}`, { method: 'DELETE' }),
-  // Refresh stored credential values on an existing connection (UC-3).
-  // Non-OAuth: pass { username, password } / { 'x-api-key': '…' } etc.
-  // OAuth: pass nothing; response contains { authorizeUrl } — open in popup.
+
   reconnect: (id, values) => request(
     `/api/connection/${id}/reconnect`,
     { method: 'POST', body: JSON.stringify({ values: values || {} }) }
   ),
+  test: (id, payload) => request(
+    `/api/connection/${id}/test`,
+    { method: 'POST', body: JSON.stringify(payload || {}) }
+  ),
+  check: (id) => request(`/api/connection/${id}/check`),
 };

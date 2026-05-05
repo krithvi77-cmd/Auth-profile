@@ -51,23 +51,28 @@ public class ApiKeyAuthenticator implements Authenticator {
 
 	@Override
 	public int save(java.sql.Connection jdbc, AuthProfile profile, Connection conn) throws SQLException {
-		int connectionId = insertConnection(jdbc, profile, conn);
-
 		Map<String, String> supplied = AuthUtil.toMap(conn);
 		Field target = resolveApiKeyField(profile, supplied);
 
 		String value = supplied.get(target.getKey());
 		if (value == null) value = supplied.get("api_key_value");
 
-		AuthUtil.insertValue(jdbc, connectionId, target.getId(), target.getKey(), value);
+		int valueId = AuthUtil.insertValue(jdbc, 0, target.getId(), target.getKey(), value);
 
+		int connectionId = insertConnection(jdbc, profile, conn,
+				Connection.VALUE_TYPE_VALUES, valueId);
+
+		AuthUtil.assignConnectionIdToValueRow(jdbc, valueId, connectionId);
+
+		conn.setValueType(Connection.VALUE_TYPE_VALUES);
+		conn.setValueId(valueId);
 		return connectionId;
 	}
 
 
 	private Field resolveApiKeyField(AuthProfile profile, Map<String, String> supplied) {
 		for (Field f : profile.getFields()) {
-			if (supplied.containsKey(f.getKey())){ 
+			if (supplied.containsKey(f.getKey())){
 				return f;
 			}
 		}
@@ -79,8 +84,10 @@ public class ApiKeyAuthenticator implements Authenticator {
 		return profile.getFields().isEmpty() ? null : profile.getFields().get(0);
 	}
 
-	private int insertConnection(java.sql.Connection jdbc, AuthProfile profile, Connection conn) throws SQLException {
-		String sql = "INSERT INTO connections (profile_id, user_id, name, status) VALUES (?, ?, ?, ?)";
+	private int insertConnection(java.sql.Connection jdbc, AuthProfile profile, Connection conn,
+			String valueType, int valueId) throws SQLException {
+		String sql = "INSERT INTO connections (profile_id, user_id, name, status, value_type, value_id) "
+				+ "VALUES (?, ?, ?, ?, ?, ?)";
 		try (PreparedStatement ps = jdbc.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			ps.setInt(1, profile.getId());
 			int userId = conn.getUserId() != null ? conn.getUserId()
@@ -88,6 +95,8 @@ public class ApiKeyAuthenticator implements Authenticator {
 			ps.setInt(2, userId);
 			ps.setString(3, conn.getName().trim());
 			ps.setString(4, conn.getStatus() != null ? conn.getStatus() : "active");
+			ps.setString(5, valueType);
+			ps.setInt(6, valueId);
 			ps.executeUpdate();
 
 			try (ResultSet keys = ps.getGeneratedKeys()) {

@@ -1,17 +1,14 @@
 package authentication;
 
+import dao.ConnectionDAO;
 import model.AuthProfile;
 import model.Connection;
-import model.ConnectionValue;
 import model.Field;
-import authentication.AuthUtil;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
-import java.util.HashMap;
 import java.util.Map;
 
 public class BasicAuthenticator implements Authenticator {
@@ -50,17 +47,30 @@ public class BasicAuthenticator implements Authenticator {
 
 	@Override
 	public int save(java.sql.Connection jdbc, AuthProfile profile, Connection conn) throws SQLException {
-		int connectionId = insertConnection(jdbc, profile, conn);
-
 		Map<String, String> supplied = AuthUtil.toMap(conn);
-		AuthUtil.insertValue(jdbc, connectionId, AuthUtil.findField(profile, "username").getId(), "username", supplied.get("username"));
-		AuthUtil.insertValue(jdbc, connectionId, AuthUtil.findField(profile, "password").getId(), "password", supplied.get("password"));
+		Field userField = AuthUtil.findField(profile, "username");
+		Field passField = AuthUtil.findField(profile, "password");
 
+		int firstValueId = AuthUtil.insertValue(jdbc, 0, userField.getId(),
+				"username", supplied.get("username"));
+
+		int connectionId = insertConnection(jdbc, profile, conn,
+				Connection.VALUE_TYPE_VALUES, firstValueId);
+
+		AuthUtil.assignConnectionIdToValueRow(jdbc, firstValueId, connectionId);
+
+		AuthUtil.insertValue(jdbc, connectionId, passField.getId(),
+				"password", supplied.get("password"));
+
+		conn.setValueType(Connection.VALUE_TYPE_VALUES);
+		conn.setValueId(firstValueId);
 		return connectionId;
 	}
 
-	private int insertConnection(java.sql.Connection jdbc, AuthProfile profile, Connection conn) throws SQLException {
-		String sql = "INSERT INTO connections (profile_id, user_id, name, status) VALUES (?, ?, ?, ?)";
+	private int insertConnection(java.sql.Connection jdbc, AuthProfile profile, Connection conn,
+			String valueType, int valueId) throws SQLException {
+		String sql = "INSERT INTO connections (profile_id, user_id, name, status, value_type, value_id) "
+				+ "VALUES (?, ?, ?, ?, ?, ?)";
 		try (PreparedStatement ps = jdbc.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			ps.setInt(1, profile.getId());
 
@@ -69,6 +79,8 @@ public class BasicAuthenticator implements Authenticator {
 			ps.setInt(2, userId);
 			ps.setString(3, conn.getName().trim());
 			ps.setString(4, conn.getStatus() != null ? conn.getStatus() : "active");
+			ps.setString(5, valueType);
+			ps.setInt(6, valueId);
 			ps.executeUpdate();
 
 			try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -78,5 +90,4 @@ public class BasicAuthenticator implements Authenticator {
 			}
 		}
 	}
-
 }

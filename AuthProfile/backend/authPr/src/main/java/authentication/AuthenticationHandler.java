@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class AuthenticationHandler {
-
+	
 	private static final Map<Integer, Authenticator> REGISTRY = new HashMap<>();
 
 	static {

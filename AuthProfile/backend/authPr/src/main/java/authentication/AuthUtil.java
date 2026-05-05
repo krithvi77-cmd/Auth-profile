@@ -17,13 +17,10 @@ public class AuthUtil {
 	private AuthUtil() {
 	}
 
-
-	public static void insertValue(java.sql.Connection jdbc, int connectionId, int fieldId, String key, String value)
+	public static int insertValue(java.sql.Connection jdbc, int connectionId, int fieldId, String key, String value)
 			throws SQLException {
-		String sql = "INSERT INTO connection_values (connection_id, field_id, `key`, value) " +
-				"VALUES (?, ?, ?, ?) " +
-				"ON DUPLICATE KEY UPDATE `key` = VALUES(`key`), value = VALUES(value)";
-		try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
+		String sql = "INSERT INTO connection_values (connection_id, field_id, `key`, value) VALUES (?, ?, ?, ?)";
+		try (PreparedStatement ps = jdbc.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
 			ps.setInt(1, connectionId);
 			ps.setInt(2, fieldId);
 			if (key != null) {
@@ -37,6 +34,27 @@ public class AuthUtil {
 				ps.setNull(4, Types.VARCHAR);
 			}
 			ps.executeUpdate();
+
+			try (java.sql.ResultSet keys = ps.getGeneratedKeys()) {
+				if (!keys.next()) {
+					throw new SQLException("Insert connection_values failed, no id returned");
+				}
+				return keys.getInt(1);
+			}
+		}
+	}
+
+	public static void assignConnectionIdToValueRow(java.sql.Connection jdbc,
+			int valueRowId, int connectionId) throws SQLException {
+		String sql = "UPDATE connection_values SET connection_id = ? WHERE id = ?";
+		try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
+			ps.setInt(1, connectionId);
+			ps.setInt(2, valueRowId);
+			int rows = ps.executeUpdate();
+			if (rows == 0) {
+				throw new SQLException("connection_values row " + valueRowId
+						+ " not found when assigning connection_id");
+			}
 		}
 	}
 

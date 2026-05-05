@@ -89,7 +89,6 @@ public class ProfileServlet extends HttpServlet {
 
 			writeJson(res, 200, dao.getById(id));
 		} catch (IllegalArgumentException bad) {
-			// Invariant violations (auth_type change, field-set edit, etc.)
 			writeError(res, 400, bad.getMessage());
 		} catch (Exception e) {
 			e.printStackTrace();
