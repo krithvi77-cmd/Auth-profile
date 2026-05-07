@@ -179,8 +179,20 @@ function App() {
     }
   };
 
-  const handleClone = (p) => {
-    alert(`Clone: ${p.name}`);
+  const handleClone = async (p) => {
+    if (!p?.id) {
+      alert("Clone failed: missing connection id");
+      return;
+    }
+    if (!window.confirm(`Clone connection "${p.name}"?`)) return;
+
+    try {
+      const result = await connectionApi.clone(p.id);
+      alert(`Cloned successfully as "${result.name}".`);
+      await reloadConnections();
+    } catch (e) {
+      alert("Clone failed: " + e.message);
+    }
   };
   const handleTest = (p) => {
     setTestTarget(p);
@@ -195,14 +207,7 @@ function App() {
     setCheckTarget(null);
   };
 
-  // Reconnect flow (UC-3 in SPEC):
-  //   - OAuth profiles: no form. Hit the reconnect endpoint directly. The
-  //     server will either silently refresh tokens (returns {refreshed:true})
-  //     or hand back an authorizeUrl that we open in a popup. Either way,
-  //     the same connection_id is reused; no new connection_oauth_values row.
-  //   - Non-OAuth (basic / api key): the user must retype credentials, so
-  //     load the connection + profile and open the form. Form submit will
-  //     route through connectionApi.reconnect() (see handleConnectionSave).
+ 
   const handleReconnect = async (p) => {
     try {
       if (!p?.id) {
@@ -219,12 +224,9 @@ function App() {
       const isOauth = (profile?.authType ?? profile?.auth_type) === 2;
 
       if (isOauth) {
-        // No form, no payload. Server decides: refresh-token vs re-authorize.
-        const result = await connectionApi.reconnect(p.id, {});
+          const result = await connectionApi.reconnect(p.id, {});
         if (result?.authorizeUrl) {
-          // Refresh-token unavailable / rejected → open popup to re-authorize.
-          // Same connection_id is bound to the new authorize state, so the
-          // callback will UPSERT onto the existing oauth row.
+         
           const popup = window.open(
             result.authorizeUrl,
             "oauth_authorize",
@@ -251,10 +253,6 @@ function App() {
           window.addEventListener("message", onMessage);
           return;
         }
-        // Silent path: tokens were either still valid (no refresh
-        // performed) or refresh-token grant succeeded in place.
-        // Always surface feedback — without it, clicking Reconnect on
-        // a STILL_VALID connection looks like the button is broken.
         if (result?.refreshed) {
           alert("Connection refreshed.");
         } else {
@@ -263,8 +261,6 @@ function App() {
         reload();
         return;
       }
-
-      // Non-OAuth: open the form so the user can retype credentials.
       setSelectedAuthProfile(profile);
       setEditing(full);
       setConnectionStep("form");

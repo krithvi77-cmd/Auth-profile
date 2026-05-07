@@ -38,9 +38,8 @@ public class OAuthV2Tester implements ConnectionTester {
 		spec.setUrl(request.getUrl());
 		spec.setMethod(request.getMethod());
 
-		String tokenType = oauth.getTokenType() != null && !oauth.getTokenType().isEmpty()
-				? oauth.getTokenType()
-				: "Bearer";
+		String tokenType = oauth.getTokenType() != null && !oauth.getTokenType().isEmpty() ? oauth.getTokenType()
+				: "Zoho-oauthtoken";
 		spec.addHeader("Authorization", tokenType + " " + oauth.getAccessToken());
 		spec.addHeader("Accept", "application/json");
 

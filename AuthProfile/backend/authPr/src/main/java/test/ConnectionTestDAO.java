@@ -31,37 +31,42 @@ public class ConnectionTestDAO {
 				conn.setUserId(rs.wasNull() ? null : uid);
 				conn.setName(rs.getString("name"));
 				conn.setStatus(rs.getString("status"));
-
 				conn.setValueType(rs.getString("value_type"));
 				int vid = rs.getInt("value_id");
 				conn.setValueId(rs.wasNull() ? null : vid);
-
 				Timestamp ts = rs.getTimestamp("created_at");
 				if (ts != null) conn.setCreatedAt(ts.toString());
 			}
 		}
 
-		List<ConnectionValue> values = loadValues(connectionId);
-		conn.setFields(values);
+		if (Connection.VALUE_TYPE_VALUES.equals(conn.getValueType())
+				&& conn.getValueId() != null && conn.getValueId() > 0) {
+			List<ConnectionValue> values = loadValues(conn.getValueId());
+			conn.setFields(values);
+		}
 		return conn;
 	}
 
-	private List<ConnectionValue> loadValues(int connectionId) throws SQLException {
-		String sql = "SELECT id, connection_id, field_id, `key`, value "
-				+ "FROM connection_values WHERE connection_id = ?";
+	private List<ConnectionValue> loadValues(int valueId) throws SQLException {
+		String sql = "SELECT id, field_id, `key`, value "
+				+ "FROM connection_values WHERE id = ?";
 		List<ConnectionValue> list = new ArrayList<>();
 		try (java.sql.Connection jdbc = DBUtil.getConnection();
 				PreparedStatement ps = jdbc.prepareStatement(sql)) {
-			ps.setInt(1, connectionId);
+			ps.setInt(1, valueId);
 			try (ResultSet rs = ps.executeQuery()) {
-				while (rs.next()) {
-					ConnectionValue v = new ConnectionValue();
-					v.setId(rs.getInt("id"));
-					v.setConnectionId(rs.getInt("connection_id"));
-					v.setFieldId(rs.getInt("field_id"));
-					v.setKey(rs.getString("key"));
-					v.setValue(rs.getString("value"));
-					list.add(v);
+				if (rs.next()) {
+					String rawValue = rs.getString("value");
+					if (rawValue != null && rawValue.startsWith("{")) {
+						parseJsonValues(rawValue, list);
+					} else {
+						ConnectionValue v = new ConnectionValue();
+						v.setId(rs.getInt("id"));
+						v.setFieldId(rs.getInt("field_id"));
+						v.setKey(rs.getString("key"));
+						v.setValue(rawValue);
+						list.add(v);
+					}
 				}
 			}
 		}
@@ -69,21 +74,42 @@ public class ConnectionTestDAO {
 	}
 
 	public ConnectionOauth loadOauth(int connectionId) throws SQLException {
-		String sql = "SELECT access_token, refresh_token, expires_at "
-				+ "FROM connection_oauth_values WHERE connection_id = ?";
+		String sql = "SELECT ov.access_token, ov.refresh_token, ov.expires_at "
+				+ "FROM connection_oauth_values ov "
+				+ "INNER JOIN connections c ON c.value_id = ov.id "
+				+ "WHERE c.id = ? AND c.value_type = 'OAUTH'";
 		try (java.sql.Connection jdbc = DBUtil.getConnection();
 				PreparedStatement ps = jdbc.prepareStatement(sql)) {
 			ps.setInt(1, connectionId);
 			try (ResultSet rs = ps.executeQuery()) {
 				if (!rs.next()) return null;
 				ConnectionOauth o = new ConnectionOauth();
-				o.setConnectionId(connectionId);
 				o.setAccessToken(rs.getString("access_token"));
 				o.setRefreshToken(rs.getString("refresh_token"));
 				Timestamp ts = rs.getTimestamp("expires_at");
 				if (ts != null) o.setExpiresAt(ts.toInstant().toString());
 				return o;
 			}
+		}
+	}
+
+	private void parseJsonValues(String json, List<ConnectionValue> fields) {
+		String trimmed = json.trim();
+		if (trimmed.startsWith("{")) trimmed = trimmed.substring(1);
+		if (trimmed.endsWith("}")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+		if (trimmed.isEmpty()) return;
+
+		String[] pairs = trimmed.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+		for (String pair : pairs) {
+			int colon = pair.indexOf(':');
+			if (colon < 0) continue;
+			String k = pair.substring(0, colon).trim();
+			String v = pair.substring(colon + 1).trim();
+			if (k.startsWith("\"") && k.endsWith("\"")) k = k.substring(1, k.length() - 1);
+			if (v.startsWith("\"") && v.endsWith("\"")) v = v.substring(1, v.length() - 1);
+			if ("null".equals(v)) v = null;
+			ConnectionValue cv = new ConnectionValue(k, v);
+			fields.add(cv);
 		}
 	}
 }

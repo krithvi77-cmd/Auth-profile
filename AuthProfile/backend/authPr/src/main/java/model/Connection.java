@@ -41,6 +41,16 @@ public class Connection {
 	public Connection() {
 	}
 
+	public Connection(String name,String status, Map<String,String>values, List<ConnectionValue> fields,String valueType, Integer valueId, ConnectionOauth oauthData) {
+		this.name = name;
+		this.status = status;
+		this.values = values != null ? new java.util.HashMap<>(values) : new java.util.HashMap<>();
+		this.fields = fields != null ? new ArrayList<>(fields) : new ArrayList<>();
+		this.oauthData = oauthData;
+		this.valueType = valueType;
+		this.valueId = valueId;
+	}
+
 	@JsonProperty("values")
 	public void setValues(Map<String, String> values) {
 		this.values = values != null ? new java.util.HashMap<>(values) : new java.util.HashMap<>();
