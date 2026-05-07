@@ -1,6 +1,5 @@
 package authentication;
 
-import dao.ConnectionDAO;
 import model.AuthProfile;
 import model.Connection;
 import model.Field;
@@ -9,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class BasicAuthenticator implements Authenticator {
@@ -35,10 +35,10 @@ public class BasicAuthenticator implements Authenticator {
 		if (password == null || password.isEmpty())
 			return "password is required";
 
-		if (AuthUtil.findField(profile, "username") == null){
+		if (AuthUtil.findField(profile, "username") == null) {
 			return "Profile missing 'username' field";
 		}
-		if (AuthUtil.findField(profile, "password") == null){
+		if (AuthUtil.findField(profile, "password") == null) {
 			return "Profile missing 'password' field";
 		}
 
@@ -49,21 +49,18 @@ public class BasicAuthenticator implements Authenticator {
 	public int save(java.sql.Connection jdbc, AuthProfile profile, Connection conn) throws SQLException {
 		Map<String, String> supplied = AuthUtil.toMap(conn);
 		Field userField = AuthUtil.findField(profile, "username");
-		Field passField = AuthUtil.findField(profile, "password");
 
-		int firstValueId = AuthUtil.insertValue(jdbc, 0, userField.getId(),
-				"username", supplied.get("username"));
+		Map<String, String> valuesMap = new LinkedHashMap<>();
+		valuesMap.put("username", supplied.get("username"));
+		valuesMap.put("password", supplied.get("password"));
+
+		int valueId = AuthUtil.insertValueAsJson(jdbc, userField.getId(), "username", valuesMap);
 
 		int connectionId = insertConnection(jdbc, profile, conn,
-				Connection.VALUE_TYPE_VALUES, firstValueId);
-
-		AuthUtil.assignConnectionIdToValueRow(jdbc, firstValueId, connectionId);
-
-		AuthUtil.insertValue(jdbc, connectionId, passField.getId(),
-				"password", supplied.get("password"));
+				Connection.VALUE_TYPE_VALUES, valueId);
 
 		conn.setValueType(Connection.VALUE_TYPE_VALUES);
-		conn.setValueId(firstValueId);
+		conn.setValueId(valueId);
 		return connectionId;
 	}
 
@@ -73,7 +70,6 @@ public class BasicAuthenticator implements Authenticator {
 				+ "VALUES (?, ?, ?, ?, ?, ?)";
 		try (PreparedStatement ps = jdbc.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			ps.setInt(1, profile.getId());
-
 			int userId = conn.getUserId() != null ? conn.getUserId()
 					: (profile.getCreatedBy() != null ? profile.getCreatedBy() : 0);
 			ps.setInt(2, userId);

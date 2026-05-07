@@ -28,7 +28,7 @@ public class HttpTestExecutor {
 
 	public ExecutedResponse execute(TestRequestSpec spec) throws IOException, InterruptedException {
 		String finalUrl = appendQuery(spec.getUrl(), spec.getQueryParams());
-
+		
 		HttpRequest.Builder builder = HttpRequest.newBuilder()
 				.uri(URI.create(finalUrl))
 				.timeout(timeout);

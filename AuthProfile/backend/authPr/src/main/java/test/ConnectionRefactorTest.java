@@ -20,7 +20,6 @@ public class ConnectionRefactorTest {
 			testNotNullValueType();
 			testNotNullValueId();
 			testInvalidEnumValueType();
-			testUniqueValueRef();
 			testReadValuesConnection();
 			testReadOauthConnection();
 		} catch (Exception ex) {

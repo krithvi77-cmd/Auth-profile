@@ -47,8 +47,6 @@ public class Oauthv2Authenticator implements Authenticator {
 
 		int connectionId = insertConnection(jdbc, profile, conn, oauthRowId);
 
-		updateOauthConnectionId(jdbc, oauthRowId, connectionId);
-
 		conn.setValueType(Connection.VALUE_TYPE_OAUTH);
 		conn.setValueId(oauthRowId);
 		conn.setStatus("inactive");
@@ -57,8 +55,8 @@ public class Oauthv2Authenticator implements Authenticator {
 
 	private int insertOauthPlaceholder(java.sql.Connection jdbc) throws SQLException {
 		String sql = "INSERT INTO connection_oauth_values "
-				+ "(connection_id, access_token, refresh_token, expires_at) "
-				+ "VALUES (0, NULL, NULL, NULL)";
+				+ "(access_token, refresh_token, expires_at) "
+				+ "VALUES (NULL, NULL, NULL)";
 		try (PreparedStatement ps = jdbc.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			ps.executeUpdate();
 			try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -66,20 +64,6 @@ public class Oauthv2Authenticator implements Authenticator {
 					throw new SQLException("Insert connection_oauth_values failed, no id returned");
 				}
 				return keys.getInt(1);
-			}
-		}
-	}
-
-	private void updateOauthConnectionId(java.sql.Connection jdbc, int oauthRowId, int connectionId)
-			throws SQLException {
-		String sql = "UPDATE connection_oauth_values SET connection_id = ? WHERE id = ?";
-		try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
-			ps.setInt(1, connectionId);
-			ps.setInt(2, oauthRowId);
-			int rows = ps.executeUpdate();
-			if (rows == 0) {
-				throw new SQLException("connection_oauth_values row " + oauthRowId
-						+ " not found when assigning connection_id");
 			}
 		}
 	}

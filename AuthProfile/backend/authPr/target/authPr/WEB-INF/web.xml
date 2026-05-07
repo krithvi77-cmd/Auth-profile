@@ -33,4 +33,15 @@
         <url-pattern>/api/connection/*</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>CloneServlet</servlet-name>
+        <servlet-class>controller.CloneServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>CloneServlet</servlet-name>
+        <url-pattern>/api/clone/*</url-pattern>
+    </servlet-mapping>
+
 </web-app>

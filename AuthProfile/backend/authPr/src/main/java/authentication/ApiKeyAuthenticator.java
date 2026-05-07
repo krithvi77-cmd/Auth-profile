@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ApiKeyAuthenticator implements Authenticator {
@@ -57,22 +58,22 @@ public class ApiKeyAuthenticator implements Authenticator {
 		String value = supplied.get(target.getKey());
 		if (value == null) value = supplied.get("api_key_value");
 
-		int valueId = AuthUtil.insertValue(jdbc, 0, target.getId(), target.getKey(), value);
+		Map<String, String> valuesMap = new LinkedHashMap<>();
+		valuesMap.put(target.getKey(), value);
+
+		int valueId = AuthUtil.insertValueAsJson(jdbc, target.getId(), target.getKey(), valuesMap);
 
 		int connectionId = insertConnection(jdbc, profile, conn,
 				Connection.VALUE_TYPE_VALUES, valueId);
-
-		AuthUtil.assignConnectionIdToValueRow(jdbc, valueId, connectionId);
 
 		conn.setValueType(Connection.VALUE_TYPE_VALUES);
 		conn.setValueId(valueId);
 		return connectionId;
 	}
 
-
 	private Field resolveApiKeyField(AuthProfile profile, Map<String, String> supplied) {
 		for (Field f : profile.getFields()) {
-			if (supplied.containsKey(f.getKey())){
+			if (supplied.containsKey(f.getKey())) {
 				return f;
 			}
 		}
@@ -91,7 +92,7 @@ public class ApiKeyAuthenticator implements Authenticator {
 		try (PreparedStatement ps = jdbc.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 			ps.setInt(1, profile.getId());
 			int userId = conn.getUserId() != null ? conn.getUserId()
-			           : (profile.getCreatedBy() != null ? profile.getCreatedBy() : 0);
+					: (profile.getCreatedBy() != null ? profile.getCreatedBy() : 0);
 			ps.setInt(2, userId);
 			ps.setString(3, conn.getName().trim());
 			ps.setString(4, conn.getStatus() != null ? conn.getStatus() : "active");

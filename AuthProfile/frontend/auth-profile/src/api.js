@@ -38,4 +38,5 @@ export const connectionApi = {
     { method: 'POST', body: JSON.stringify(payload || {}) }
   ),
   check: (id) => request(`/api/connection/${id}/check`),
+  clone: (id) => request(`/api/clone/${id}`, { method: 'POST' }),
 };

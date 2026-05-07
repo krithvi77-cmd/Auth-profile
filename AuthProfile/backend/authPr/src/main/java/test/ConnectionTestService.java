@@ -31,29 +31,24 @@ public class ConnectionTestService {
 		if (request.getUrl() == null || request.getUrl().trim().isEmpty()) {
 			return TestResult.failure(0, null, 0, "url is required");
 		}
-
 		Connection conn = testDAO.loadConnectionWithValues(connectionId);
 		if (conn == null) {
 			return TestResult.failure(404, null, 0, "Connection not found: id=" + connectionId);
 		}
-
 		AuthProfile profile = profileDAO.getByIdUnmasked(conn.getProfileId());
 		if (profile == null) {
 			return TestResult.failure(404, null, 0,
 					"Auth profile not found: id=" + conn.getProfileId());
 		}
-
 		ConnectionTester tester = ConnectionTesterRegistry.forAuthType(profile.getAuthType());
 		if (tester == null) {
 			return TestResult.failure(0, null, 0,
 					"No tester registered for auth_type=" + profile.getAuthType());
 		}
-
 		ConnectionOauth oauth = null;
 		if (profile.getAuthType() == authentication.Oauthv2Authenticator.AUTH_TYPE) {
 			oauth = testDAO.loadOauth(connectionId);
 		}
-
 		TestRequestSpec spec;
 		try {
 			spec = tester.prepare(profile, conn, oauth, request);

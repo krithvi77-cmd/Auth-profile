@@ -52,7 +52,6 @@ public class OAuthService {
         url.append("&redirect_uri=").append(enc(redirectUri));
         url.append("&state=").append(enc(state));
         url.append("&access_type=offline");
-
         url.append("&prompt=consent");
         if (scopes != null && !scopes.isEmpty()) {
             url.append("&scope=").append(enc(scopes));
@@ -116,8 +115,6 @@ public class OAuthService {
 
     public ReconnectOutcome reconnect(int connectionId)
             throws SQLException, IOException, InterruptedException {
-
-        boolean valid =  isStillValid(connectionId);
 
         StoredOauth stored = loadOauthRow(connectionId);
         if (stored == null) {
@@ -259,12 +256,26 @@ public class OAuthService {
         }
     }
 
+    private int lookupValueId(java.sql.Connection jdbc, int connectionId) throws SQLException {
+        String sql = "SELECT value_id FROM connections WHERE id = ? AND value_type = 'OAUTH'";
+        try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
+            ps.setInt(1, connectionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("No OAUTH connection found with id=" + connectionId);
+                }
+                return rs.getInt("value_id");
+            }
+        }
+    }
+
     private void saveInitialTokens(int connectionId, String accessToken,
             String refreshToken, String expiresAtIso) throws SQLException {
         try (java.sql.Connection jdbc = DBUtil.getConnection()) {
             jdbc.setAutoCommit(false);
             try {
-                updateOauthTokens(jdbc, connectionId, accessToken, refreshToken, expiresAtIso);
+                int oauthRowId = lookupValueId(jdbc, connectionId);
+                updateOauthTokens(jdbc, oauthRowId, accessToken, refreshToken, expiresAtIso);
                 markConnectionActive(jdbc, connectionId);
                 jdbc.commit();
             } catch (SQLException ex) {
@@ -281,7 +292,8 @@ public class OAuthService {
         try (java.sql.Connection jdbc = DBUtil.getConnection()) {
             jdbc.setAutoCommit(false);
             try {
-                updateOauthTokens(jdbc, connectionId, accessToken, refreshToken, expiresAtIso);
+                int oauthRowId = lookupValueId(jdbc, connectionId);
+                updateOauthTokens(jdbc, oauthRowId, accessToken, refreshToken, expiresAtIso);
                 markConnectionActive(jdbc, connectionId);
                 jdbc.commit();
             } catch (SQLException ex) {
@@ -301,13 +313,13 @@ public class OAuthService {
         }
     }
 
-    private void updateOauthTokens(java.sql.Connection jdbc, int connectionId, String accessToken,
+    private void updateOauthTokens(java.sql.Connection jdbc, int oauthRowId, String accessToken,
             String refreshToken, String expiresAtIso) throws SQLException {
         String sql = "UPDATE connection_oauth_values SET "
                 + "access_token = ?, "
                 + "refresh_token = COALESCE(?, refresh_token), "
                 + "expires_at = ? "
-                + "WHERE connection_id = ?";
+                + "WHERE id = ?";
 
         try (PreparedStatement ps = jdbc.prepareStatement(sql)) {
             ps.setString(1, accessToken);
@@ -321,12 +333,12 @@ public class OAuthService {
             } else {
                 ps.setNull(3, Types.TIMESTAMP);
             }
-            ps.setInt(4, connectionId);
+            ps.setInt(4, oauthRowId);
             int rows = ps.executeUpdate();
             if (rows == 0) {
                 throw new SQLException(
-                        "updateOauthTokens affected 0 rows for connection_id=" + connectionId
-                                + " — row missing or connection_id mismatch");
+                        "updateOauthTokens affected 0 rows for oauth id=" + oauthRowId
+                                + " — row missing");
             }
         }
     }
@@ -446,8 +458,10 @@ public class OAuthService {
     }
 
     private StoredOauth loadOauthRow(int connectionId) throws SQLException {
-        String sql = "SELECT access_token, refresh_token, expires_at "
-                + "FROM connection_oauth_values WHERE connection_id = ?";
+        String sql = "SELECT ov.access_token, ov.refresh_token, ov.expires_at "
+                + "FROM connection_oauth_values ov "
+                + "INNER JOIN connections c ON c.value_id = ov.id "
+                + "WHERE c.id = ? AND c.value_type = 'OAUTH'";
         try (java.sql.Connection jdbc = DBUtil.getConnection();
                 PreparedStatement ps = jdbc.prepareStatement(sql)) {
             ps.setInt(1, connectionId);
